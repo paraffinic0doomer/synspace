@@ -48,7 +48,7 @@ export function WorldStateBar() {
   }, [violations, routes, zones])
 
   return (
-    <div className="pointer-events-none flex items-stretch overflow-hidden rounded-lg border border-ink-750/80 bg-ink-900/85 backdrop-blur-md">
+    <div className="pointer-events-none flex max-w-[calc(100vw-1.5rem)] items-stretch overflow-hidden rounded-lg border border-ink-750/80 bg-ink-900/85 backdrop-blur-md">
       <Stat label="Objects" value={String(objects.length)} />
       <Stat label="Zones" value={String(zones.length)} />
       <Stat

@@ -48,13 +48,14 @@ export const inBounds = (grid: OccupancyGrid, col: number, row: number) =>
  * Rasterises the room floor.
  *
  * `ignoreTypes` lets callers exclude assets that are not real obstacles for the
- * question being asked — doors are openings, not walls.
+ * question being asked — doors are openings rather than walls, and a road is a
+ * surface people travel along rather than something they walk around.
  */
 export function buildOccupancyGrid(
   objects: SceneObject[],
   room: RoomConfig,
   cellSize = DEFAULT_CELL_SIZE,
-  ignoreTypes: ReadonlyArray<SceneObject['type']> = ['door'],
+  ignoreTypes: ReadonlyArray<SceneObject['type']> = ['door', 'road'],
 ): OccupancyGrid {
   const cols = Math.max(1, Math.floor(room.width / cellSize) + 1)
   const rows = Math.max(1, Math.floor(room.depth / cellSize) + 1)

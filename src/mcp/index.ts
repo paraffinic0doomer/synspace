@@ -74,7 +74,21 @@ export function connectWebMcp(): McpConnection | null {
     store.mcp.status === 'connected' && store.mcp.surface === detected.surface
 
   try {
-    const { registered, dispose } = registerTools(detected, SYNSPACE_TOOLS.map(toHostTool))
+    const { registered, dispose } = registerTools(
+      detected,
+      SYNSPACE_TOOLS.map(toHostTool),
+      {
+        onError: (message) => {
+          const store = useSceneStore.getState()
+          store.setMcpState({ status: 'error', error: message })
+          store.log({
+            message: `WebMCP registration failed — ${message}`,
+            actor: SYSTEM_ACTOR,
+            level: 'error',
+          })
+        },
+      },
+    )
 
     store.setMcpState({
       status: 'connected',

@@ -24,6 +24,7 @@ export type TransformPatch = Partial<Transform>
 
 /** Every primitive asset kind SynSpace can place in a room. */
 export type AssetType =
+  // Workplace
   | 'desk'
   | 'chair'
   | 'meeting-table'
@@ -32,6 +33,21 @@ export type AssetType =
   | 'partition'
   | 'server-rack'
   | 'door'
+  // Storage and utility
+  | 'storage-unit'
+  // Collaboration and teaching
+  | 'whiteboard'
+  // Hospitality and public-facing
+  | 'cafe-table'
+  | 'counter'
+  // Building fabric
+  | 'wall-segment'
+  | 'barrier'
+  // Urban scale — buildings, routes and vehicles
+  | 'building'
+  | 'hospital'
+  | 'road'
+  | 'vehicle'
 
 /** Intrinsic size of an asset in metres, before `scale` is applied. */
 export interface Dimensions {
@@ -212,6 +228,9 @@ export type AssetCategory =
   | 'Workstations'
   | 'Seating'
   | 'Collaboration'
+  | 'Storage'
+  | 'Hospitality'
   | 'Infrastructure'
   | 'Structure'
+  | 'Urban'
   | 'Ambience'

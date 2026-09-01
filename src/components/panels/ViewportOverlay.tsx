@@ -35,8 +35,9 @@ export function ViewportOverlay() {
         <WorldViewSwitch />
       </div>
 
-      {/* Top-left: view context */}
-      <div className="absolute top-3 left-3 flex flex-col gap-1.5">
+      {/* Top-left: view context. Hidden on narrow surfaces, where it would
+          collide with the world-state bar — which carries the same counts. */}
+      <div className="absolute top-3 left-3 hidden flex-col gap-1.5 lg:flex">
         <div className="inline-flex items-center gap-2 rounded-lg border border-ink-750/80 bg-ink-900/80 px-2.5 py-1.5 backdrop-blur-md">
           <Icon name="cube" size={13} className="text-brand-400" />
           <span className="text-[11.5px] font-medium text-ink-200">Perspective</span>

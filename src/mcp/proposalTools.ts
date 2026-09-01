@@ -1,4 +1,5 @@
 import { OPTIMIZE_STRATEGIES } from '@/spatial'
+import { LAYOUTS, LAYOUT_IDS, getLayout } from '@/tools'
 import { useProposalStore, useSceneStore } from '@/state'
 import { toProposalView } from '@/proposals'
 import type { Proposal, ProposalView, ScenarioOperation, Vec3 } from '@/types'
@@ -347,7 +348,79 @@ const setObjectFixed: SynSpaceTool = {
   },
 }
 
+
+const generateLayout: SynSpaceTool = {
+  name: 'generate_layout',
+  description:
+    'Refurnish the current room with a named arrangement — an office, classroom, cafe, clinic waiting room, data hall or retail floor. Replaces the objects and zones in one undoable step, keeping the room size and the constraint rules. Use this when asked to build or change what kind of space this is, rather than placing objects one at a time.',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      layout: {
+        type: 'string',
+        enum: LAYOUT_IDS,
+        description: 'Which arrangement to build.',
+      },
+    },
+    required: ['layout'],
+    additionalProperties: false,
+  },
+  run: (input) => {
+    const args = check(asRecord(input))
+    if (!args.ok) return args.outcome
+
+    const raw = args.value.layout
+    if (typeof raw !== 'string') {
+      return fail('"layout" must be one of: ' + LAYOUT_IDS.join(', ') + '.')
+    }
+    const definition = getLayout(raw.trim().toLowerCase())
+    if (!definition) {
+      return fail(
+        'Unknown layout "' + raw + '". Available layouts: ' +
+          LAYOUTS.map((l) => l.id + ' (' + l.matches.slice(0, 3).join(', ') + ')').join('; ') +
+          '.',
+      )
+    }
+
+    const before = useSceneStore.getState().scene
+    const applied = useSceneStore.getState().generateLayout(definition.id, PROPOSAL_AGENT)
+    if (!applied) return fail('Could not generate the ' + definition.name + ' layout.')
+
+    const after = useSceneStore.getState().scene
+    return done({
+      layout: definition.id,
+      name: definition.name,
+      summary: definition.summary,
+      objects_before: before.objects.length,
+      objects_after: after.objects.length,
+      zones: after.zones.map((z) => ({ id: z.id, name: z.name, kind: z.kind })),
+      room: { width_m: after.environment.room.width, depth_m: after.environment.room.depth },
+      world_revision: after.metadata.revision,
+      status: 'generated',
+      note: 'Run check_constraints next — a generated layout is a starting point, not a guarantee.',
+    })
+  },
+}
+
+const listLayouts: SynSpaceTool = {
+  name: 'list_layouts',
+  description:
+    'List the arrangements generate_layout can build, with the kinds of request each one answers.',
+  inputSchema: { type: 'object', properties: {}, additionalProperties: false },
+  run: () =>
+    done({
+      layouts: LAYOUTS.map((layout) => ({
+        id: layout.id,
+        name: layout.name,
+        summary: layout.summary,
+        matches: layout.matches,
+      })),
+    }),
+}
+
 export const PROPOSAL_TOOLS: SynSpaceTool[] = [
+  generateLayout,
+  listLayouts,
   createProposal,
   proposeLayoutFix,
   listProposals,

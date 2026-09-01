@@ -24,7 +24,7 @@ export {
 } from './occupancy'
 export type { OccupancyGrid, BottleneckResult, Region } from './occupancy'
 
-export { evaluateConstraints } from './constraints'
+export { evaluateConstraints, isSurfaceType } from './constraints'
 export type { ConstraintReport } from './constraints'
 
 export {

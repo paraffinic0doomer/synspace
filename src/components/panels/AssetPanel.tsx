@@ -184,7 +184,7 @@ function SceneOutliner() {
   const setHovered = useSceneStore((state) => state.setHovered)
   const updateObject = useSceneStore((state) => state.updateObject)
   const deleteObject = useSceneStore((state) => state.deleteObject)
-  const resetScene = useSceneStore((state) => state.resetScene)
+  const startFresh = useSceneStore((state) => state.startFresh)
   const clearScene = useSceneStore((state) => state.clearScene)
 
   return (
@@ -219,9 +219,13 @@ function SceneOutliner() {
       </div>
 
       <footer className="flex shrink-0 items-center gap-1.5 border-t border-ink-750 px-2.5 py-2">
-        <Button onClick={() => resetScene()} className="flex-1">
+        <Button
+          onClick={() => startFresh()}
+          className="flex-1"
+          title="Empty the room. Nothing is left for a refresh to restore."
+        >
           <Icon name="refresh" size={12} />
-          Reset layout
+          Start fresh
         </Button>
         <Button tone="danger" onClick={() => clearScene()} disabled={objects.length === 0}>
           <Icon name="trash" size={12} />

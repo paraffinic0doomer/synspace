@@ -157,13 +157,26 @@ function checkCollisions(
 }
 
 /**
+ * Ground surfaces are laid *under* other objects by design.
+ *
+ * A vehicle parked on a road is the intended arrangement, not an overlap, so
+ * surfaces are exempt from collision and spacing entirely.
+ */
+const SURFACE_TYPES: ReadonlyArray<SceneObject['type']> = ['road']
+
+export const isSurfaceType = (type: SceneObject['type']): boolean =>
+  SURFACE_TYPES.includes(type)
+
+/**
  * Seating is meant to tuck into worksurfaces, so a chair overlapping a desk or
  * table is a correct layout, not a collision.
  */
 function isTuckedPair(a: SceneObject, b: SceneObject): boolean {
   const pair = [a.type, b.type]
+  if (pair.some(isSurfaceType)) return true
   return (
-    pair.includes('chair') && (pair.includes('desk') || pair.includes('meeting-table'))
+    pair.includes('chair') &&
+    (pair.includes('desk') || pair.includes('meeting-table') || pair.includes('cafe-table'))
   )
 }
 
@@ -174,7 +187,9 @@ function checkSpacing(
   footprints: Map<string, Footprint>,
 ): ConstraintViolation[] {
   const violations: ConstraintViolation[] = []
-  const subjects = objects.filter((object) => appliesTo(constraint, object))
+  const subjects = objects.filter(
+    (object) => appliesTo(constraint, object) && !isSurfaceType(object.type),
+  )
 
   for (let i = 0; i < subjects.length; i += 1) {
     for (let j = i + 1; j < subjects.length; j += 1) {
@@ -219,6 +234,7 @@ function checkEntrance(
 
     for (const object of objects) {
       if (object.id === door.id || object.type === 'door') continue
+      if (isSurfaceType(object.type)) continue // a road under a door is the point
       const footprint = footprints.get(object.id)!
       if (!polygonsOverlap(zone, corners(footprint))) continue
 

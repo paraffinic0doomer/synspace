@@ -17,7 +17,7 @@ const STORAGE_KEY = 'synspace.welcome.dismissed'
 
 export function WelcomeOverlay() {
   const [open, setOpen] = useState(false)
-  const [presetId, setPresetId] = useState(DEFAULT_PRESET_ID)
+  const [presetId, setPresetId] = useState<string>(DEFAULT_PRESET_ID)
   const loadScene = useSceneStore((state) => state.loadScene)
 
   useEffect(() => {
@@ -40,10 +40,10 @@ export function WelcomeOverlay() {
   }
 
   const start = () => {
-    if (presetId !== DEFAULT_PRESET_ID) {
-      const preset = getWorldPreset(presetId)
-      if (preset) loadScene(preset.build(), SYSTEM_ACTOR)
-    }
+    // The app boots into an empty room, so the chosen preset always has to be
+    // loaded — including the default one.
+    const preset = getWorldPreset(presetId)
+    if (preset) loadScene(preset.build(), SYSTEM_ACTOR)
     dismiss()
   }
 
@@ -102,6 +102,10 @@ export function WelcomeOverlay() {
         <div className="border-b border-ink-750 px-5 py-4">
           <p className="pb-2 text-[10px] font-semibold tracking-[0.14em] text-ink-400 uppercase">
             Start from
+          </p>
+          <p className="pb-2 text-[10.5px] text-ink-500">
+            Or skip this and open into an empty room — the inspector has layouts you can build,
+            and so does your agent.
           </p>
           <div className="grid gap-2 sm:grid-cols-2">
             {WORLD_PRESETS.map((preset) => (

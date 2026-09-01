@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { connectWebMcp } from './index'
+import { installDevHost } from './devHost'
 
 /**
  * Mounts the WebMCP tool surface once for the application.
@@ -10,7 +11,24 @@ import { connectWebMcp } from './index'
  */
 export function useWebMcp(): void {
   useEffect(() => {
-    const connection = connectWebMcp()
-    return () => connection?.dispose()
+    let connection: ReturnType<typeof connectWebMcp> = null
+    let disposed = false
+
+    // In development a host can be requested with `?webmcp=1`; installing it is
+    // async, so connect after it settles. In production this branch is compiled
+    // out entirely and connection happens synchronously.
+    if (import.meta.env.DEV) {
+      void installDevHost().then(() => {
+        if (disposed) return
+        connection = connectWebMcp()
+      })
+    } else {
+      connection = connectWebMcp()
+    }
+
+    return () => {
+      disposed = true
+      connection?.dispose()
+    }
   }, [])
 }

@@ -98,6 +98,34 @@ export function createStarterScene(): World {
   }
 }
 
+/**
+ * The clean room the app boots into.
+ *
+ * Deliberately empty: no objects and no zones, so the first thing that happens
+ * is a choice — pick a layout, or ask an agent for one. Booting into the same
+ * furnished floor every time made the app look like a fixed demo rather than a
+ * world you author.
+ */
+export function createEmptyWorld(): World {
+  const now = Date.now()
+  return {
+    id: 'world-empty',
+    name: 'Untitled Floor',
+    objects: [],
+    zones: [],
+    environment: { ...DEFAULT_ENVIRONMENT, room: { ...DEFAULT_ENVIRONMENT.room } },
+    constraints: DEFAULT_CONSTRAINTS.map((constraint) => ({ ...constraint })),
+    metadata: {
+      createdAt: now,
+      updatedAt: now,
+      revision: 1,
+      description: 'An empty room. Choose a layout, or ask an agent to build one.',
+      tags: ['empty'],
+      units: 'meters',
+    },
+  }
+}
+
 /** An empty room that keeps the current zones, environment and rules. */
 export function createEmptyScene(name = 'Untitled Floor'): World {
   return { ...createStarterScene(), id: createId('world'), name, objects: [] }

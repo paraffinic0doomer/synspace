@@ -29,9 +29,21 @@ const MODE_OPTIONS: {
 interface HeaderBarProps {
   demoOpen: boolean
   onToggleDemo: () => void
+  /** Drawer state for the docks, which collapse on narrow surfaces. */
+  leftOpen: boolean
+  rightOpen: boolean
+  onToggleLeft: () => void
+  onToggleRight: () => void
 }
 
-export function HeaderBar({ demoOpen, onToggleDemo }: HeaderBarProps) {
+export function HeaderBar({
+  demoOpen,
+  onToggleDemo,
+  leftOpen,
+  rightOpen,
+  onToggleLeft,
+  onToggleRight,
+}: HeaderBarProps) {
   const sceneName = useSceneName()
   const environment = useEnvironment()
   const transformMode = useSceneStore((state) => state.transformMode)
@@ -56,6 +68,17 @@ export function HeaderBar({ demoOpen, onToggleDemo }: HeaderBarProps) {
 
   return (
     <header className="relative z-30 flex h-14 shrink-0 items-center gap-3 border-b border-ink-750 bg-ink-900 px-3">
+      {/* Dock toggles — only reachable when the docks are drawers */}
+      <IconButton
+        label="Assets and outliner"
+        tone="brand"
+        active={leftOpen}
+        onClick={onToggleLeft}
+        className="lg:hidden"
+      >
+        <Icon name="layers" size={14} />
+      </IconButton>
+
       {/* Identity */}
       <div className="flex items-center gap-2.5 pr-3">
         <div className="relative grid h-8 w-8 place-items-center rounded-[9px] border border-brand-500/40 bg-linear-to-br from-brand-500/25 to-signal-500/10">
@@ -200,6 +223,16 @@ export function HeaderBar({ demoOpen, onToggleDemo }: HeaderBarProps) {
             {mcp.status === 'connected' ? 'webmcp live' : 'webmcp offline'}
           </span>
         </div>
+
+        <IconButton
+          label="World inspector"
+          tone="brand"
+          active={rightOpen}
+          onClick={onToggleRight}
+          className="xl:hidden"
+        >
+          <Icon name="info" size={14} />
+        </IconButton>
 
         <div className="relative">
           <IconButton

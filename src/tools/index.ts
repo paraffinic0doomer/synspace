@@ -29,7 +29,15 @@ export { DEFAULT_CONSTRAINTS, getConstraint } from './constraints'
 
 export { clampToRoom, findSpawnPosition, footprintRadius } from './placement'
 
-export { createStarterObjects, createStarterScene, createEmptyScene } from './sceneTemplates'
+export {
+  createStarterObjects,
+  createStarterScene,
+  createEmptyScene,
+  createEmptyWorld,
+} from './sceneTemplates'
+
+export { LAYOUTS, LAYOUT_IDS, getLayout, buildLayout } from './layouts'
+export type { LayoutDefinition, LayoutResult, LayoutPlacement } from './layouts'
 
 export { requestFocus, requestResetView, onFocusRequest, onResetViewRequest } from './viewportEvents'
 

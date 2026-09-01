@@ -149,9 +149,46 @@ from Drei `Lightformer`s — no HDRI download, so the app runs fully offline.
 
 ## WebMCP
 
+### Turning it on
+
+No browser ships WebMCP enabled today. Chrome 152 does **not** expose it even
+with `--enable-features=WebMCP` — the feature is not compiled into stable
+builds, so the flag is a no-op. A plain load therefore shows
+`webmcp: unavailable`, which is correct behaviour rather than a fault.
+
+To exercise the tool surface locally:
+
+```bash
+npm run dev
+# then open
+http://localhost:5173/?webmcp=1
+```
+
+That loads `@mcp-b/global`, the W3C WebMCP polyfill, and SynSpace registers
+against it with no code path changed. The status line reads
+`document.modelContext (polyfill)` — it never claims native support. The
+preference sticks; `?webmcp=0` clears it.
+
+Guards keep it out of the product: it is a devDependency, imported dynamically,
+behind `import.meta.env.DEV`, and inert unless explicitly requested. The
+production bundle contains no trace of it.
+
+Once a host is present, drive the tools from the page's own context:
+
+```js
+await document.modelContext.getTools()            // 23 tools
+await navigator.modelContextTesting.executeTool(  // run one
+  'read_scene_graph', '{}',
+)
+```
+
+Other routes to a host: the MCP-B browser extension, or a Chromium build where
+WebMCP is actually compiled in.
+
 Tools are registered on `document.modelContext.registerTool` when the browser
-exposes a host (`navigator.modelContext` and `window.modelContext` are also
-checked, and a host offering only `provideContext` is handled). SynSpace ships
+exposes a host (`navigator.modelContext`, now deprecated in the spec, and
+`window.modelContext` are also checked). Unregistration uses the `AbortSignal`
+the standard passes to `registerTool` — `ModelContext` has no `unregisterTool`. SynSpace ships
 no polyfill: with no host, detection reports `unavailable`, the header and
 console say so, and the app behaves exactly as it did before.
 
@@ -259,6 +296,72 @@ zone capacity differences, resolved and introduced constraint signatures, and
 a deterministic `apply`, `reject`, or `review` recommendation. It does not
 pretend that the recommendation is a scientific optimization score.
 
+## Persistence
+
+The world is saved to `localStorage` as you work, so a refresh brings back what
+you built — the exact objects, their positions and your edits, plus the zones
+and rules. **Start fresh**, in the outliner footer, is the way back to an empty
+room.
+
+Only the world is kept. Undo history, scenarios and proposals are session work:
+reviving an undo stack whose snapshots reference a page that no longer exists
+would be worse than starting it clean.
+
+Every read is defensive. Storage that is unavailable, full, holding a world from
+an older build, or holding something unparseable all fall back to an empty room
+rather than stopping the app from opening — each case has a test.
+
+## Layouts
+
+The app opens into an **empty room** the first time. What kind of space it becomes is a choice
+— made by a person from the inspector, or by an agent from the same library.
+
+| Layout | What it builds |
+| --- | --- |
+| Open-plan office | Desk bank behind dividers, review table, breakout seating |
+| Classroom | Whiteboard and teaching desk at the front, seating in rows |
+| Cafe | Service counter along one wall, two-seat tables across the floor |
+| Clinic waiting room | Reception counter facing seat banks with an accessible aisle |
+| Data hall | Two cabinet rows either side of a service aisle |
+| Retail floor | Shelving gondolas in aisles with a till by the entrance |
+
+Each generator is **deterministic and room-aware**: it reads the room's extent
+and lays out relative to it, so the same request gives the same result and a
+larger room simply gets more of it. Every layout also supplies its own zones and
+an entrance and emergency exit, so a generated world is immediately checkable —
+five of the six pass their own constraint check with zero findings.
+
+A layout refurnishes the room in front of you. A **preset** replaces the whole
+world, including its size and rules. `generate_layout` and `list_layouts` put
+the same library in front of an agent, which is what "build me a classroom"
+should reach for rather than placing thirty objects one at a time.
+
+## The asset kit
+
+Eighteen low-poly primitives. Each is declared in exactly two places — metadata
+in `tools/assetCatalog.ts`, geometry in `scene/assets/` — so adding one touches
+no panel, no store action and no viewport code.
+
+| Category | Assets |
+| --- | --- |
+| Workstations | desk |
+| Seating | chair, sofa |
+| Collaboration | meeting table, whiteboard |
+| Hospitality | cafe table, service counter |
+| Storage | storage unit |
+| Infrastructure | server rack |
+| Structure | partition, wall segment, barrier, door |
+| Urban | building, hospital, road, vehicle |
+| Ambience | plant |
+
+Every asset shares one convention: its local origin sits on the floor at the
+centre of its footprint, and its front faces local +Z.
+
+**Roads are surfaces, not obstacles.** The occupancy grid ignores them and the
+collision and spacing rules exempt them, so a vehicle parked on a road is the
+intended arrangement rather than an overlap, and routes run *along* a road
+instead of around it.
+
 ## The experience
 
 A clean session opens on a single statement — **Build a world. Ask your agent to
@@ -291,6 +394,11 @@ thresholds and labels, and nothing else.
 - **Workspace** — desks, collaboration and circulation.
 - **Server Room** — two cabinet rows either side of a cold aisle, with tighter
   aisle (1.5 m) and rack-spacing rules, and the aisle marked restricted.
+- **Emergency Response** — a 60 x 44 m city district: residential blocks either
+  side of a main route, a hospital to the east, and a collapsed section closing
+  the western approach. Same engine, street numbers — the walkway rule becomes
+  a 3.5 m vehicle-access rule, and it opens reporting exactly one error: the
+  western route detours to 3 m.
 
 Adding one means adding an entry to `WORLD_PRESETS`.
 
@@ -441,9 +549,7 @@ any real GPU handles trivially; it is a floor, not a representative number.
   substantial work should propose rather than mutate.
 - **Proposal operations are limited to move and remove.** The scenario engine
   supports more, but the proposal tool surface exposes only these two.
-- **The generic storage unit** from the master asset list.
-- **An Emergency Response preset.** The preset registry is ready for it, but
-  buildings, roads and a hospital are not expressible with the office asset kit;
-  dressing racks up as buildings would misrepresent the world rather than model
-  it. That preset needs new low-poly primitives, which is asset work rather than
-  engine work.
+- **Agent-authored zones and room sizes.** The tools let an agent clear a room
+  and furnish it, but zones, room dimensions and presets stay human-side. An
+  agent asked to "build a classroom" re-furnishes the existing shell; it cannot
+  redraw the regions or resize the floor.

@@ -263,10 +263,225 @@ const serverRoom: WorldPreset = {
 }
 
 // ---------------------------------------------------------------------------
+// Emergency response — the same engine at street scale
+// ---------------------------------------------------------------------------
+
+/**
+ * Outdoor world: city blocks, a hospital, roads and a blocked route.
+ *
+ * The engine is untouched. Only the numbers change — the "room" is a 60 x 44 m
+ * district rather than an 18 x 14 m floor, the walkway rule becomes a vehicle
+ * access rule at 3.5 m, and roads are surfaces the routing runs along instead
+ * of obstacles it avoids.
+ */
+const EMERGENCY_ZONES: Zone[] = [
+  {
+    id: 'zone-hospital',
+    name: 'Hospital Grounds',
+    kind: 'emergency_zone',
+    bounds: { minX: 8, maxX: 28, minZ: -20, maxZ: -2 },
+    color: '#f2617a',
+    description: 'Ambulance approach and hospital forecourt. Must stay driveable.',
+    disallowedTypes: ['building', 'barrier', 'storage-unit'],
+  },
+  {
+    id: 'zone-north-block',
+    name: 'North Block',
+    kind: 'restricted_zone',
+    bounds: { minX: -28, maxX: -4, minZ: -21, maxZ: -4 },
+    color: '#4f8cff',
+    description: 'Residential blocks north of the main route.',
+    disallowedTypes: [],
+    capacity: 6,
+  },
+  {
+    id: 'zone-south-block',
+    name: 'South Block',
+    kind: 'restricted_zone',
+    bounds: { minX: -28, maxX: -4, minZ: 4, maxZ: 21 },
+    color: '#8f9bb3',
+    description: 'Residential blocks south of the main route.',
+    disallowedTypes: [],
+    capacity: 6,
+  },
+  {
+    id: 'zone-main-route',
+    name: 'Main Route',
+    kind: 'circulation',
+    bounds: { minX: -30, maxX: 30, minZ: -3.5, maxZ: 3.5 },
+    color: '#22d3a7',
+    description: 'Primary east-west corridor. Emergency vehicles depend on it.',
+    disallowedTypes: ['building', 'hospital', 'storage-unit', 'desk', 'sofa'],
+  },
+  {
+    id: 'zone-staging',
+    name: 'Staging Area',
+    kind: 'entrance_zone',
+    bounds: { minX: 8, maxX: 28, minZ: 4, maxZ: 20 },
+    color: '#7ba9ff',
+    description: 'Where responding units assemble. Keep the approach open.',
+    disallowedTypes: ['building', 'hospital'],
+  },
+]
+
+/** Same rules, street numbers: a fire appliance needs far more than a corridor. */
+const EMERGENCY_CONSTRAINTS: SpatialConstraint[] = DEFAULT_CONSTRAINTS.map((constraint) => {
+  if (constraint.kind === 'walkway-width') {
+    return {
+      ...constraint,
+      label: 'Vehicle access width',
+      description: 'Emergency vehicles must be able to pass along the route.',
+      value: 3.5,
+    }
+  }
+  if (constraint.kind === 'exit-clearance') {
+    return {
+      ...constraint,
+      label: 'Evacuation route width',
+      description: 'Every area must reach an exit at this width.',
+      value: 3.0,
+    }
+  }
+  if (constraint.kind === 'entrance-clearance') {
+    return { ...constraint, label: 'Access point clearance', value: 4.0 }
+  }
+  if (constraint.kind === 'object-spacing') {
+    return { ...constraint, value: 2.0, appliesTo: ['building'] as AssetType[] }
+  }
+  return constraint
+})
+
+const emergencyResponse: WorldPreset = {
+  id: 'emergency-response',
+  name: 'Emergency Response',
+  worldName: 'District 4 — Incident Map',
+  tagline: 'Buildings, roads, a hospital and a blocked route',
+  description:
+    'A city district with residential blocks either side of the main route, a hospital to the east, and a collapsed section blocking the western approach. Access rules are sized for vehicles, not people.',
+  prompts: [
+    'Is the hospital still reachable from the west?',
+    'What if we clear the blocked section of the main route?',
+    'Which areas cannot evacuate at 3 m?',
+    'Find the narrowest point on the vehicle route.',
+  ],
+  build: () => {
+    const layout: Placement[] = []
+
+    // The main east-west route, laid as road surfaces end to end.
+    for (let i = 0; i < 5; i += 1) {
+      layout.push({
+        id: 'road-main-' + String(i + 1),
+        type: 'road',
+        position: [-24 + i * 12, 0, 0],
+        rotation: [0, deg(90), 0],
+        label: 'Main Route ' + String(i + 1),
+      })
+    }
+    layout.push({
+      id: 'road-hospital-spur',
+      type: 'road',
+      position: [16, 0, -7],
+      label: 'Hospital Spur',
+    })
+
+    // Residential blocks either side of the route.
+    const blockX = [-24, -16, -8]
+    blockX.forEach((x, index) => {
+      layout.push({
+        id: 'building-n' + String(index + 1),
+        type: 'building',
+        position: [x, 0, -11],
+        label: 'Block N' + String(index + 1),
+      })
+      layout.push({
+        id: 'building-s' + String(index + 1),
+        type: 'building',
+        position: [x, 0, 11],
+        label: 'Block S' + String(index + 1),
+      })
+    })
+
+    layout.push({
+      id: 'hospital-central',
+      type: 'hospital',
+      position: [18, 0, -12],
+      rotation: [0, deg(180), 0],
+      label: 'Central Hospital',
+    })
+
+    // Responding units staged to the south-east.
+    layout.push({
+      id: 'vehicle-ambulance',
+      type: 'vehicle',
+      position: [14, 0, 8],
+      rotation: [0, deg(180), 0],
+      label: 'Ambulance 1',
+    })
+    layout.push({
+      id: 'vehicle-support',
+      type: 'vehicle',
+      position: [19, 0, 8],
+      rotation: [0, deg(180), 0],
+      label: 'Support Unit',
+    })
+
+    // The incident: a collapsed section closing the western approach.
+    //
+    // The closure has to span the whole drivable gap between the north and
+    // south building rows (z -8 .. 8) to actually be a closure — a couple of
+    // barriers in a 44 m wide district is something you simply drive around.
+    // Nine units spanning z -7.15 .. 7.15: wide enough to close the gap between
+    // the building rows, spaced so no two barriers touch each other or a block.
+    for (let i = 0; i < 9; i += 1) {
+      layout.push({
+        id: 'barrier-incident-' + String(i + 1),
+        type: 'barrier',
+        position: [-13, 0, -7.15 + i * 1.7875],
+        rotation: [0, deg(90), 0],
+        label: 'Road Closure ' + String(i + 1),
+      })
+    }
+
+    // Access points at either end of the district.
+    layout.push({
+      id: 'door-west-access',
+      type: 'door',
+      // Set in from the wall: an access point flush against the boundary has
+      // its approach width capped by the boundary itself, which would report a
+      // pinch that has nothing to do with the incident.
+      position: [-27.5, 0, 0],
+      rotation: [0, deg(90), 0],
+      label: 'West Access',
+      tags: ['entrance'],
+    })
+    layout.push({
+      id: 'door-east-access',
+      type: 'door',
+      position: [27.5, 0, 0],
+      rotation: [0, deg(-90), 0],
+      label: 'East Access',
+      tags: ['emergency-exit'],
+    })
+
+    return makeWorld({
+      id: 'world-emergency-response',
+      name: 'District 4 — Incident Map',
+      description:
+        'City district with residential blocks, a hospital to the east, a main east-west route and a collapsed section blocking the western approach.',
+      tags: ['urban', 'emergency', 'district-4'],
+      room: { width: 60, depth: 44, wallHeight: 12 },
+      objects: place(layout),
+      zones: EMERGENCY_ZONES,
+      constraints: EMERGENCY_CONSTRAINTS,
+    })
+  },
+}
+
+// ---------------------------------------------------------------------------
 // Registry
 // ---------------------------------------------------------------------------
 
-export const WORLD_PRESETS: WorldPreset[] = [workspace, serverRoom]
+export const WORLD_PRESETS: WorldPreset[] = [workspace, serverRoom, emergencyResponse]
 
 export const DEFAULT_PRESET_ID = workspace.id
 

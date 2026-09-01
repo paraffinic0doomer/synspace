@@ -7,7 +7,7 @@ import {
   useWorldMetadata,
   useZoneSummaries,
 } from '@/state'
-import { WORLD_PRESETS, requestFocus } from '@/tools'
+import { LAYOUTS, WORLD_PRESETS, requestFocus } from '@/tools'
 import { ZONE_KIND_LABELS } from '@/tools/zones'
 import type { ConstraintViolation, EnvironmentSettings } from '@/types'
 import { COORDINATE_SYSTEM, SYSTEM_ACTOR } from '@/types'
@@ -30,6 +30,8 @@ export function WorldPanel() {
   const updateEnvironment = useSceneStore((state) => state.updateEnvironment)
   const selectObject = useSceneStore((state) => state.selectObject)
   const loadScene = useSceneStore((state) => state.loadScene)
+  const generateLayout = useSceneStore((state) => state.generateLayout)
+  const objectCount = useSceneStore((state) => state.scene.objects.length)
   const sceneName = useSceneStore((state) => state.scene.name)
 
   const grouped = useMemo(
@@ -73,6 +75,12 @@ export function WorldPanel() {
             Units {COORDINATE_SYSTEM.units}. Origin at the floor centre, +Y up.{' '}
             {COORDINATE_SYSTEM.rotation.convention}
           </p>
+          <p className="flex items-center gap-1.5 pt-2 text-[10px] text-ink-500">
+            <Icon name="download" size={11} className="shrink-0 text-signal-400" />
+            Saved in this browser — a refresh brings it back. Use{' '}
+            <span className="text-ink-300">Start fresh</span> in the outliner to begin from an
+            empty room.
+          </p>
           <div className="flex flex-wrap gap-1 pt-2">
             {metadata.tags.map((tag) => (
               <Badge key={tag}>{tag}</Badge>
@@ -104,6 +112,37 @@ export function WorldPanel() {
               </button>
             )
           })}
+        </div>
+
+        {/* Layouts refurnish the current room; presets replace the whole world. */}
+        <SectionLabel
+          trailing={
+            objectCount === 0 ? <span className="text-brand-400 normal-case">start here</span> : undefined
+          }
+        >
+          Build a layout
+        </SectionLabel>
+        {objectCount === 0 && (
+          <p className="px-2.5 pb-2 text-[10.5px] leading-relaxed text-ink-400">
+            The room is empty. Pick an arrangement, or ask an agent for one — it has the same
+            layouts available through <span className="font-mono text-ink-300">generate_layout</span>.
+          </p>
+        )}
+        <div className="grid grid-cols-2 gap-1.5 px-2.5">
+          {LAYOUTS.map((layout) => (
+            <button
+              key={layout.id}
+              type="button"
+              title={layout.summary}
+              onClick={() => generateLayout(layout.id)}
+              className="rounded-lg border border-ink-750 bg-ink-850 p-2 text-left transition-colors hover:border-brand-500/50 hover:bg-ink-800"
+            >
+              <span className="block truncate text-[11.5px] font-medium text-ink-200">
+                {layout.name}
+              </span>
+              <span className="block truncate text-[10px] text-ink-500">{layout.summary}</span>
+            </button>
+          ))}
         </div>
 
         <WhatIfPanel />

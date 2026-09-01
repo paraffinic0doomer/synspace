@@ -28,7 +28,9 @@ import {
 } from '@/tools/assetCatalog'
 import { clampToRoom, findSpawnPosition } from '@/tools/placement'
 import { mergeEnvironment, sanitizeEnvironmentPatch } from '@/tools/environment'
-import { createStarterScene } from '@/tools/sceneTemplates'
+import { createEmptyWorld } from '@/tools/sceneTemplates'
+import { clearPersistedWorld, loadPersistedWorld, watchWorld } from './persistence'
+import { buildLayout, getLayout } from '@/tools/layouts'
 import { createId, normalizeAngle, roundTo, roundVec3, toDegrees } from '@/utils'
 
 const MAX_ACTIVITY_ENTRIES = 250
@@ -123,6 +125,13 @@ export interface SceneState {
   updateZone: (id: string, patch: Partial<Omit<Zone, 'id'>>, actor?: ActorRef) => boolean
   loadScene: (scene: Scene, actor?: ActorRef) => void
   resetScene: (actor?: ActorRef) => void
+  /**
+   * Empties the world and drops the locally saved copy, so a refresh opens on
+   * an empty room rather than restoring what was here.
+   */
+  startFresh: (actor?: ActorRef) => void
+  /** Refurnishes the current room with a named layout, keeping its size and rules. */
+  generateLayout: (layoutId: string, actor?: ActorRef) => boolean
   /** Applies a whole layout plan as a single undoable change. */
   applyLayout: (assignments: LayoutAssignment[], label: string, actor?: ActorRef) => number
 
@@ -361,7 +370,10 @@ export const useSceneStore = create<SceneState>()((set, get) => {
   })
 
   return {
-    scene: createStarterScene(),
+    // A refresh restores the world you were working on; a first visit, a
+    // cleared store, or a world written by an older build all fall back to an
+    // empty room.
+    scene: loadPersistedWorld() ?? createEmptyWorld(),
 
     selectedId: null,
     hoveredId: null,
@@ -659,16 +671,59 @@ export const useSceneStore = create<SceneState>()((set, get) => {
       const before = get().scene
       record(
         before,
-        createStarterScene(),
+        createEmptyWorld(),
         {
           kind: 'load',
-          label: 'Reset scene to the studio floor template',
+          label: 'Reset to an empty room',
           actor,
           targetIds: [],
         },
         'warn',
       )
       set({ selectedId: null, hoveredId: null })
+    },
+
+    startFresh: (actor = HUMAN_ACTOR) => {
+      const before = get().scene
+      clearPersistedWorld()
+      record(
+        before,
+        createEmptyWorld(),
+        {
+          kind: 'load',
+          label: 'Started fresh — the room and the saved copy are both empty now',
+          actor,
+          targetIds: [],
+        },
+        'warn',
+      )
+      set({ selectedId: null, hoveredId: null })
+    },
+
+    /**
+     * Replaces the arrangement without touching the room or its rules.
+     *
+     * One undoable change, so trying a layout and going back is a single step.
+     */
+    generateLayout: (layoutId, actor = HUMAN_ACTOR) => {
+      const before = get().scene
+      const definition = getLayout(layoutId)
+      const built = buildLayout(layoutId, before.environment.room)
+      if (!definition || !built) return false
+
+      record(
+        before,
+        { ...before, objects: built.objects, zones: built.zones },
+        {
+          kind: 'load',
+          label: `Generated the ${definition.name} layout · ${built.objects.length} objects`,
+          actor,
+          targetIds: [],
+        },
+        'success',
+      )
+      set({ selectedId: null, hoveredId: null })
+      return true
     },
 
     /**
@@ -887,3 +942,11 @@ function describeCommit(kind: ChangeKind, object?: SceneObject): string {
       return `Edited ${object.label}`
   }
 }
+
+// Persist the world as it changes. Registered here so every path — human edits,
+// agent tools, layout generation, undo — is covered by one subscription.
+watchWorld((listener) =>
+  useSceneStore.subscribe((state, previous) => {
+    if (state.scene !== previous.scene) listener(state.scene)
+  }),
+)
