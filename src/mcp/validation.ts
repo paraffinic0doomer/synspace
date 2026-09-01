@@ -1,5 +1,5 @@
 import type { AssetType, SceneObject, Vec3 } from '@/types'
-import { ASSET_TYPES } from '@/tools'
+import { BUILTIN_ASSET_TYPES, allAssetTypes } from '@/tools'
 import { toRadians } from '@/utils'
 import { OPTIMIZE_STRATEGIES, type OptimizeStrategy } from '@/spatial'
 import { ENVIRONMENT_PRESET_NAMES } from '@/tools'
@@ -49,6 +49,32 @@ export function requireNumber(
   return valid(raw)
 }
 
+/** Bounds for a requested real-world size, in metres. */
+export const SIZE_LIMIT = { min: 0.1, max: 60 } as const
+
+/**
+ * An optional size in metres.
+ *
+ * Absent means "leave this axis alone", which is what lets a caller stretch a
+ * building's height without disturbing its footprint.
+ */
+export function requireSize(
+  args: Record<string, unknown>,
+  key: string,
+): Validated<number | undefined> {
+  const raw = args[key]
+  if (raw === undefined || raw === null) return valid(undefined)
+  if (typeof raw !== 'number' || !Number.isFinite(raw)) {
+    return invalid(`"${key}" must be a finite number, received ${JSON.stringify(raw)}.`)
+  }
+  if (raw < SIZE_LIMIT.min || raw > SIZE_LIMIT.max) {
+    return invalid(
+      `"${key}" must be between ${SIZE_LIMIT.min} and ${SIZE_LIMIT.max} metres, received ${raw}.`,
+    )
+  }
+  return valid(raw)
+}
+
 export function requireString(
   args: Record<string, unknown>,
   key: string,
@@ -64,14 +90,25 @@ export function requireString(
   return valid(raw)
 }
 
+/**
+ * Resolves an asset kind against the catalogue as it stands right now.
+ *
+ * Deliberately checked at call time rather than pinned into the tool schema:
+ * the catalogue grows when an agent defines a new kind, and a schema captured
+ * at registration would reject the very asset that agent just created.
+ */
 export function requireAssetType(args: Record<string, unknown>, key = 'model_type'): Validated<AssetType> {
+  const available = allAssetTypes()
   const raw = args[key]
   if (typeof raw !== 'string') {
-    return invalid(`"${key}" is required and must be one of: ${ASSET_TYPES.join(', ')}.`)
+    return invalid(`"${key}" is required and must be one of: ${available.join(', ')}.`)
   }
   const normalised = raw.trim().toLowerCase().replace(/[\s_]+/g, '-')
-  if (!(ASSET_TYPES as string[]).includes(normalised)) {
-    return invalid(`Unknown model_type "${raw}". Valid types: ${ASSET_TYPES.join(', ')}.`)
+  if (!available.includes(normalised)) {
+    return invalid(
+      `Unknown ${key} "${raw}". Available kinds: ${available.join(', ')}. ` +
+        'Use define_asset to add a new kind if none of these fit.',
+    )
   }
   return valid(normalised as AssetType)
 }
@@ -194,3 +231,15 @@ export function optionalIdList(
   }
   return valid(raw as string[])
 }
+
+/**
+ * Describes the asset kinds a tool accepts.
+ *
+ * The catalogue is open — `define_asset` adds kinds at runtime — so these
+ * schemas name the built-in kit in prose instead of freezing it into an `enum`.
+ * A tool schema is captured once at registration; an enum there would reject
+ * every asset an agent went on to define.
+ */
+export const assetKindDescription = (lead: string): string =>
+  `${lead} Built-in kinds: ${BUILTIN_ASSET_TYPES.join(', ')}. ` +
+  'Kinds added with define_asset work here too — call list_asset_types for the current set.'

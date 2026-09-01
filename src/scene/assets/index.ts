@@ -19,12 +19,16 @@ import { Building } from './Building'
 import { Hospital } from './Hospital'
 import { Road } from './Road'
 import { Vehicle } from './Vehicle'
+import { CompositeAsset } from './CompositeAsset'
 
 /**
- * Asset registry. Adding a new primitive means adding it here and to the
- * catalogue in `tools/assetCatalog.ts` — no renderer changes required.
+ * Components for the built-in kit.
+ *
+ * Sparse by design: the asset type is an open union, and a type with no entry
+ * here is drawn by `CompositeAsset` from the parts its definition carries. A
+ * new kind of object no longer needs a file in this folder.
  */
-export const ASSET_COMPONENTS: Record<AssetType, ComponentType<AssetProps>> = {
+export const ASSET_COMPONENTS: Partial<Record<AssetType, ComponentType<AssetProps>>> = {
   desk: Desk,
   chair: Chair,
   'meeting-table': MeetingTable,
@@ -45,6 +49,7 @@ export const ASSET_COMPONENTS: Record<AssetType, ComponentType<AssetProps>> = {
   vehicle: Vehicle,
 }
 
+export { CompositeAsset }
 export type { AssetProps }
 export {
   Desk,

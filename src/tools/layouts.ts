@@ -38,6 +38,14 @@ export interface LayoutDefinition {
   summary: string
   /** What an agent would be asked that should land here. */
   matches: string[]
+  /**
+   * Ground the layout needs, applied when it is generated.
+   *
+   * A classroom and a city district are not the same size, so the layout
+   * states its own footprint instead of being squeezed into whatever room
+   * happens to be loaded. Omitted means "works in the current room".
+   */
+  room?: RoomConfig
   build: (room: RoomConfig) => { placements: LayoutPlacement[]; zones: Zone[] }
 }
 
@@ -544,6 +552,157 @@ const retail: LayoutDefinition = {
   },
 }
 
+const city: LayoutDefinition = {
+  id: 'city',
+  name: 'City district',
+  summary: 'Street grid with residential blocks, a hospital and vehicles on the roads.',
+  matches: ['city', 'town', 'district', 'streets', 'urban', 'neighbourhood'],
+  // A city is not a classroom: the layout says how much ground it needs, and
+  // the room is resized to suit rather than the layout being squeezed into a
+  // floor plan.
+  room: { width: 120, depth: 80, wallHeight: 24 },
+  build: (room) => {
+    const placements: LayoutPlacement[] = []
+    const halfW = room.width / 2
+    const halfD = room.depth / 2
+
+    // Main east-west route, tiled end to end.
+    const eastWestTiles = Math.max(2, Math.round((room.width - 8) / 12))
+    for (let i = 0; i < eastWestTiles; i += 1) {
+      const x = -((eastWestTiles - 1) / 2) * 12 + i * 12
+      placements.push({
+        id: 'road-ew-' + String(i + 1),
+        type: 'road',
+        position: [x, 0, 0],
+        rotation: [0, deg(90), 0],
+        label: 'Main Street ' + String(i + 1),
+      })
+    }
+
+    // Two north-south avenues.
+    const avenueX = [-halfW * 0.5, halfW * 0.5]
+    const northSouthTiles = Math.max(2, Math.round((room.depth - 8) / 12))
+    avenueX.forEach((x, avenue) => {
+      for (let i = 0; i < northSouthTiles; i += 1) {
+        const z = -((northSouthTiles - 1) / 2) * 12 + i * 12
+        placements.push({
+          id: 'road-ns-' + String(avenue + 1) + '-' + String(i + 1),
+          type: 'road',
+          position: [Math.round(x), 0, z],
+          label: (avenue === 0 ? 'West' : 'East') + ' Avenue ' + String(i + 1),
+        })
+      }
+    })
+
+    // Blocks, kept clear of every carriageway.
+    const roadX = avenueX.map((x) => Math.round(x))
+    const blockZ = [-halfD * 0.6, -halfD * 0.28, halfD * 0.28, halfD * 0.6].map((z) =>
+      Math.round(z),
+    )
+    const columns = 6
+    let block = 0
+    for (let c = 0; c < columns; c += 1) {
+      const x = Math.round(-halfW + 10 + c * ((room.width - 20) / (columns - 1)))
+      if (roadX.some((rx) => Math.abs(x - rx) < 7)) continue
+      for (const z of blockZ) {
+        if (Math.abs(z) < 7) continue
+        block += 1
+        placements.push({
+          id: 'building-' + String(block).padStart(2, '0'),
+          type: 'building',
+          position: [x, 0, z],
+          label: 'Block ' + String(block).padStart(2, '0'),
+        })
+      }
+    }
+
+    // A hospital on the main street, set back from the carriageway.
+    placements.push({
+      id: 'hospital-district',
+      type: 'hospital',
+      position: [0, 0, Math.round(-halfD * 0.55)],
+      rotation: [0, deg(180), 0],
+      label: 'District Hospital',
+    })
+
+    // Traffic.
+    placements.push(
+      { id: 'vehicle-1', type: 'vehicle', position: [-18, 0, -1], rotation: [0, deg(90), 0], label: 'Vehicle 1' },
+      { id: 'vehicle-2', type: 'vehicle', position: [12, 0, 1], rotation: [0, deg(-90), 0], label: 'Vehicle 2' },
+      { id: 'vehicle-ambulance', type: 'vehicle', position: [4, 0, -8], label: 'Ambulance' },
+    )
+
+    // Access at either end of the main street.
+    placements.push(
+      {
+        id: 'door-west-access',
+        type: 'door',
+        position: [-halfW + 3, 0, 0],
+        rotation: [0, deg(90), 0],
+        label: 'West Access',
+        tags: ['entrance'],
+      },
+      {
+        id: 'door-east-access',
+        type: 'door',
+        position: [halfW - 3, 0, 0],
+        rotation: [0, deg(-90), 0],
+        label: 'East Access',
+        tags: ['emergency-exit'],
+      },
+    )
+
+    return {
+      placements,
+      zones: [
+        zone(
+          'zone-main-street',
+          'Main Street',
+          'circulation',
+          { minX: -halfW, maxX: halfW, minZ: -6, maxZ: 6 },
+          '#22d3a7',
+          'Primary east-west route. Emergency vehicles depend on it.',
+          ['building', 'hospital', 'desk', 'sofa', 'storage-unit'],
+        ),
+        zone(
+          'zone-hospital-grounds',
+          'Hospital Grounds',
+          'emergency_zone',
+          {
+            minX: -8,
+            maxX: 8,
+            minZ: Math.round(-halfD * 0.55) - 7,
+            maxZ: Math.round(-halfD * 0.55) + 9,
+          },
+          '#f2617a',
+          'Ambulance approach and forecourt. Must stay driveable.',
+          ['building', 'barrier', 'storage-unit'],
+        ),
+        zone(
+          'zone-north-quarter',
+          'North Quarter',
+          'restricted_zone',
+          { minX: -halfW, maxX: halfW, minZ: -halfD, maxZ: -7 },
+          '#4f8cff',
+          'Residential blocks north of the main street.',
+          [],
+          14,
+        ),
+        zone(
+          'zone-south-quarter',
+          'South Quarter',
+          'restricted_zone',
+          { minX: -halfW, maxX: halfW, minZ: 7, maxZ: halfD },
+          '#8f9bb3',
+          'Residential blocks south of the main street.',
+          [],
+          14,
+        ),
+      ],
+    }
+  },
+}
+
 export const LAYOUTS: LayoutDefinition[] = [
   openPlanOffice,
   classroom,
@@ -551,6 +710,7 @@ export const LAYOUTS: LayoutDefinition[] = [
   clinic,
   dataHall,
   retail,
+  city,
 ]
 
 export const LAYOUT_IDS = LAYOUTS.map((layout) => layout.id)

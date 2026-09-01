@@ -14,6 +14,21 @@ import { corners, footprintOf, pointInPolygon, type Point2 } from './geometry'
 
 export const DEFAULT_CELL_SIZE = 0.25
 
+/** Roughly the cell budget that keeps a constraint pass under about a second. */
+const CELL_BUDGET = 40_000
+
+/**
+ * Cell size for a room.
+ *
+ * A classroom wants 0.25 m resolution; a city district at the same resolution
+ * is a quarter of a million cells and the route search crawls. Resolution
+ * therefore scales with area, never finer than the default.
+ */
+export function cellSizeFor(room: { width: number; depth: number }): number {
+  const ideal = Math.sqrt((room.width * room.depth) / CELL_BUDGET)
+  return Math.max(DEFAULT_CELL_SIZE, Math.round(ideal * 20) / 20)
+}
+
 export interface OccupancyGrid {
   cols: number
   rows: number
@@ -54,7 +69,7 @@ export const inBounds = (grid: OccupancyGrid, col: number, row: number) =>
 export function buildOccupancyGrid(
   objects: SceneObject[],
   room: RoomConfig,
-  cellSize = DEFAULT_CELL_SIZE,
+  cellSize = cellSizeFor(room),
   ignoreTypes: ReadonlyArray<SceneObject['type']> = ['door', 'road'],
 ): OccupancyGrid {
   const cols = Math.max(1, Math.floor(room.width / cellSize) + 1)

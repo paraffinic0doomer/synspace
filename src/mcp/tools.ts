@@ -1,5 +1,10 @@
 import { useSceneStore, worldApi } from '@/state'
-import { ASSET_TYPES, ENVIRONMENT_PRESET_NAMES, getAssetDefinition } from '@/tools'
+import {
+  ENVIRONMENT_PRESET_NAMES,
+  getAssetDefinition,
+  scaleForSize,
+  sizeOf,
+} from '@/tools'
 import { OPTIMIZE_STRATEGIES, evaluateConstraints, planOptimization } from '@/spatial'
 import { agentActor, type SceneObject, type Vec3 } from '@/types'
 import { roundTo, toDegrees } from '@/utils'
@@ -11,7 +16,9 @@ import {
   requireObject,
   requirePosition,
   requirePreset,
+  assetKindDescription,
   requireRotation,
+  requireSize,
   requireStrategy,
   requireString,
   type Validated,
@@ -87,17 +94,28 @@ const ROTATION = {
 const spawnAsset: SynSpaceTool = {
   name: 'spawn_3d_asset',
   description:
-    'Place a new furniture or fixture object into the workspace at a floor position. Returns the created object id.',
+    'Place a new object into the world at a floor position. Optionally size it in metres (width_m/height_m/depth_m) and give it a label, which buildings and hospitals show as signage. Returns the created object id.',
   inputSchema: {
     type: 'object',
     properties: {
-      model_type: { type: 'string', enum: ASSET_TYPES, description: 'Kind of asset to place.' },
+      model_type: { type: 'string', description: assetKindDescription('Kind of asset to place.') },
       x: { ...NUMBER, description: 'Metres along X from the room centre.' },
       y: { ...NUMBER, description: 'Height in metres. Use 0 to stand on the floor.' },
       z: { ...NUMBER, description: 'Metres along Z from the room centre.' },
       rotation: ROTATION,
       color: { type: 'string', description: 'Optional 6-digit hex accent colour, e.g. "#4f8cff".' },
-      label: { type: 'string', description: 'Optional display name.' },
+      label: {
+        type: 'string',
+        description:
+          'Optional display name. Buildings and hospitals render this as signage on the front of the model, so a name like "City Hospital" or "Riverside Tower" is visible in the 3D world.',
+      },
+      width_m: {
+        ...NUMBER,
+        description:
+          'Optional real-world width in metres. The asset kit is fixed; sizing an instance is how you get a tower rather than a shop from the same building model.',
+      },
+      height_m: { ...NUMBER, description: 'Optional real-world height in metres.' },
+      depth_m: { ...NUMBER, description: 'Optional real-world depth in metres.' },
     },
     required: ['model_type', 'x', 'z'],
     additionalProperties: false,
@@ -116,6 +134,15 @@ const spawnAsset: SynSpaceTool = {
     if (!color.ok) return color.outcome
     const label = check(requireString(args.value, 'label', { optional: true }))
     if (!label.ok) return label.outcome
+    const width = check(requireSize(args.value, 'width_m'))
+    if (!width.ok) return width.outcome
+    const height = check(requireSize(args.value, 'height_m'))
+    if (!height.ok) return height.outcome
+    const depth = check(requireSize(args.value, 'depth_m'))
+    if (!depth.ok) return depth.outcome
+
+    const sized =
+      width.value !== undefined || height.value !== undefined || depth.value !== undefined
 
     const id = store().addObject(
       type.value,
@@ -124,6 +151,13 @@ const spawnAsset: SynSpaceTool = {
         rotation: rotation.value,
         color: color.value,
         label: label.value,
+        scale: sized
+          ? scaleForSize(type.value, {
+              width: width.value,
+              height: height.value,
+              depth: depth.value,
+            })
+          : undefined,
       },
       AGENT_ACTOR,
     )
@@ -143,7 +177,8 @@ const spawnAsset: SynSpaceTool = {
       label: created.label,
       position: positionOf(created),
       rotation_degrees: roundTo(toDegrees(created.rotation[1]), 1),
-      dimensions_m: definition.dimensions,
+      dimensions_m: sizeOf(created),
+      catalogue_dimensions_m: definition.dimensions,
       status: clamped ? 'created_clamped_to_room' : 'created',
       note: clamped
         ? 'The requested position fell outside the room, so it was clamped to the nearest valid spot.'
@@ -161,8 +196,7 @@ const readSceneGraph: SynSpaceTool = {
     properties: {
       model_type: {
         type: 'string',
-        enum: ASSET_TYPES,
-        description: 'Optional filter — return only objects of this type.',
+        description: assetKindDescription('Optional filter — return only objects of this type.'),
       },
       zone_id: {
         type: 'string',
@@ -540,8 +574,7 @@ const optimizeLayout: SynSpaceTool = {
       },
       model_type: {
         type: 'string',
-        enum: ASSET_TYPES,
-        description: 'Optional — restrict the strategy to one asset type.',
+        description: assetKindDescription('Optional — restrict the strategy to one asset type.'),
       },
     },
     required: ['strategy'],

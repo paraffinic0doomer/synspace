@@ -1,4 +1,5 @@
 import { PALETTE, SURFACE } from '../materials'
+import { labelTexture } from '../labelTexture'
 import type { AssetProps } from './types'
 
 const WIDTH = 6
@@ -6,9 +7,10 @@ const HEIGHT = 8
 const DEPTH = 6
 
 /** Urban-scale block. Windows read as floors, which gives the mass a sense of size. */
-export function Building({ color }: AssetProps) {
+export function Building({ color, label }: AssetProps) {
   const floors = [1.6, 3.2, 4.8, 6.4]
   const columns = [-1.8, -0.6, 0.6, 1.8]
+  const sign = label ? labelTexture(label, '#e6ecf7') : null
 
   return (
     <group>
@@ -55,6 +57,20 @@ export function Building({ color }: AssetProps) {
         <planeGeometry args={[1.6, 1.0]} />
         <meshStandardMaterial color={PALETTE.plastic} {...SURFACE.satin} />
       </mesh>
+
+      {/* Name band above the entrance, so the block identifies itself */}
+      {sign && (
+        <>
+          <mesh position={[0, 1.35, DEPTH / 2 + 0.02]}>
+            <planeGeometry args={[4.4, 0.8]} />
+            <meshStandardMaterial color={PALETTE.darkMetal} {...SURFACE.satin} />
+          </mesh>
+          <mesh position={[0, 1.35, DEPTH / 2 + 0.04]}>
+            <planeGeometry args={[4.2, 0.7]} />
+            <meshBasicMaterial map={sign} transparent toneMapped={false} />
+          </mesh>
+        </>
+      )}
     </group>
   )
 }

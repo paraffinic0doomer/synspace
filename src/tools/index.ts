@@ -1,14 +1,33 @@
 export {
   ASSET_DEFINITIONS,
   ASSET_TYPES,
+  BUILTIN_ASSET_TYPES,
+  allAssetTypes,
+  allAssetDefinitions,
+  isCustomAssetType,
   ASSET_CATEGORY_ORDER,
   getAssetDefinition,
   groupedAssets,
   createSceneObject,
   createMetadata,
   touchMetadata,
+  scaleForSize,
+  sizeOf,
 } from './assetCatalog'
 export type { CreateObjectOptions } from './assetCatalog'
+
+export {
+  PART_SHAPES,
+  PART_FINISHES,
+  MAX_PARTS,
+  buildCustomAsset,
+  customAssetDefinitions,
+  customAssetTypes,
+  getCustomAsset,
+  partsBounds,
+  syncCustomAssets,
+} from './customAssets'
+export type { DefineAssetInput } from './customAssets'
 
 export {
   DEFAULT_ROOM,

@@ -22,8 +22,8 @@ export interface Transform {
 /** A partial transform, used by move/rotate/scale actions and previews. */
 export type TransformPatch = Partial<Transform>
 
-/** Every primitive asset kind SynSpace can place in a room. */
-export type AssetType =
+/** The asset kinds that ship with SynSpace, each backed by its own component. */
+export type BuiltinAssetType =
   // Workplace
   | 'desk'
   | 'chair'
@@ -48,6 +48,58 @@ export type AssetType =
   | 'hospital'
   | 'road'
   | 'vehicle'
+
+/**
+ * Any asset kind that can be placed.
+ *
+ * Open on purpose. The built-in kit is a starting point, not a ceiling: an
+ * agent can define new kinds at runtime from primitives (see
+ * `CustomAssetDefinition`), and those are ordinary asset types from that point
+ * on. `string & {}` keeps editor completion for the built-ins while still
+ * accepting a runtime-defined name.
+ */
+export type AssetType = BuiltinAssetType | (string & {})
+
+/** Primitive solids a data-defined asset can be built from. */
+export type PartShape = 'box' | 'cylinder' | 'sphere' | 'cone'
+
+/** Surface treatment, matching the renderer's material presets. */
+export type PartFinish = 'matte' | 'soft' | 'satin' | 'metallic'
+
+/**
+ * One solid within a data-defined asset.
+ *
+ * Positions and sizes are metres, relative to the asset's own origin, which
+ * sits on the floor at its centre — the same convention the hand-built
+ * components follow, so parts and code agree about where the ground is.
+ */
+export interface AssetPart {
+  shape: PartShape
+  /** Size in metres. For a cylinder or cone, width and depth are the diameters. */
+  size: Vec3
+  /** Offset from the asset origin. y is the height of the part's centre. */
+  position: Vec3
+  rotation?: Vec3
+  /** Hex colour. Omitted parts take the placed object's accent colour. */
+  color?: string
+  finish?: PartFinish
+}
+
+/**
+ * An asset kind described as data rather than code.
+ *
+ * This is what lets the catalogue grow without a rebuild: an agent that needs a
+ * tree, a fountain or a bus shelter composes one from primitives and it becomes
+ * a first-class asset — placeable, movable, measurable, and subject to the same
+ * spatial constraints as anything hand-modelled.
+ */
+export interface CustomAssetDefinition extends AssetDefinition {
+  parts: AssetPart[]
+  /** Paint the placed object's label onto the front face, at this height in metres. */
+  signageHeight?: number
+  /** Who defined it, so the library can be read back honestly. */
+  definedBy?: ActorRef
+}
 
 /** Intrinsic size of an asset in metres, before `scale` is applied. */
 export interface Dimensions {
@@ -200,6 +252,15 @@ export interface World {
   zones: Zone[]
   environment: EnvironmentSettings
   constraints: SpatialConstraint[]
+  /**
+   * Asset kinds defined at runtime, carried by the world itself.
+   *
+   * Kept in the document rather than in a module so a world stays complete:
+   * saving, loading, forking into a scenario and handing a world to a proposal
+   * all keep the assets it was built from. Absent on worlds that only use the
+   * built-in kit.
+   */
+  assetLibrary?: CustomAssetDefinition[]
   metadata: WorldMetadata
 }
 

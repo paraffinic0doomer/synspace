@@ -16,7 +16,6 @@ import {
   type Point2,
 } from './geometry'
 import {
-  DEFAULT_CELL_SIZE,
   buildOccupancyGrid,
   freeRegions,
   widestPath,
@@ -69,7 +68,7 @@ export function evaluateConstraints(scene: Scene): ConstraintReport {
   // only when a constraint actually needs it.
   let grid: OccupancyGrid | null = null
   const getGrid = () => {
-    grid ??= buildOccupancyGrid(objects, scene.environment.room, DEFAULT_CELL_SIZE)
+    grid ??= buildOccupancyGrid(objects, scene.environment.room)
     return grid
   }
 

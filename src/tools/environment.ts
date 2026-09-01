@@ -83,9 +83,11 @@ export const DEFAULT_ENVIRONMENT: EnvironmentSettings = {
 
 /** Accepted ranges, enforced on every environment write. */
 export const ENVIRONMENT_LIMITS = {
-  roomWidth: [4, 60] as const,
-  roomDepth: [4, 60] as const,
-  wallHeight: [2, 12] as const,
+  // Wide enough for a city district; a classroom and a city are not the same
+  // size, and the room has to be able to become either.
+  roomWidth: [4, 240] as const,
+  roomDepth: [4, 240] as const,
+  wallHeight: [2, 40] as const,
   translateSnap: [0, 5] as const,
   rotateSnap: [0, Math.PI / 2] as const,
   scaleSnap: [0, 1] as const,

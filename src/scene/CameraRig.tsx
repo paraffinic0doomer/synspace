@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import { Box3, Sphere, Vector3 } from 'three'
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
@@ -15,12 +15,23 @@ export const DEFAULT_CAMERA_TARGET: [number, number, number] = [0, 0.9, 0]
  * floor nicely and puts a 60 x 44 m district inside a wall. Scaling the same
  * viewing angle by the room's diagonal frames any world the presets define.
  */
+/**
+ * How much bigger this room is than the reference 18 x 14 m one.
+ *
+ * Framing, orbit range and fog all key off this single number, so a city
+ * district is viewed the same way a classroom is — just further out. Without
+ * it the orbit clamp and the fog, both tuned for a small room, would hide most
+ * of a large world no matter where the camera was told to go.
+ */
+export function roomScale(room: { width: number; depth: number }): number {
+  return Math.max(Math.hypot(room.width, room.depth) / Math.hypot(18, 14), 1)
+}
+
 export function defaultViewFor(room: { width: number; depth: number }): {
   position: [number, number, number]
   target: [number, number, number]
 } {
-  const reference = Math.hypot(18, 14)
-  const scale = Math.max(Math.hypot(room.width, room.depth) / reference, 1)
+  const scale = roomScale(room)
   return {
     position: [
       DEFAULT_CAMERA_POSITION[0] * scale,
@@ -42,6 +53,23 @@ const sphere = new Sphere()
  */
 export function CameraRig() {
   const { camera, scene, controls } = useThree()
+
+  /**
+   * Keeps the far clip beyond the far corner of the room.
+   *
+   * The Canvas sets `far` once at mount, which is fine until the world becomes
+   * a city and the back of it falls behind the clip plane.
+   */
+  const fitFarPlane = useCallback(
+    (room: { width: number; depth: number }) => {
+      const needed = Math.max(400, Math.hypot(room.width, room.depth) * 4)
+      if (Math.abs(camera.far - needed) < 1) return
+      camera.far = needed
+      camera.updateProjectionMatrix()
+    },
+    [camera],
+  )
+
   const desiredPosition = useRef(new Vector3())
   const desiredTarget = useRef(new Vector3())
   const animating = useRef(false)
@@ -69,6 +97,7 @@ export function CameraRig() {
 
     const stopReset = onResetViewRequest(() => {
       const view = defaultViewFor(useSceneStore.getState().scene.environment.room)
+      fitFarPlane(useSceneStore.getState().scene.environment.room)
       desiredPosition.current.set(...view.position)
       desiredTarget.current.set(...view.target)
       animating.current = true
@@ -78,12 +107,13 @@ export function CameraRig() {
       stopFocus()
       stopReset()
     }
-  }, [camera, scene])
+  }, [camera, scene, fitFarPlane])
 
   // Re-frame whenever the world's room changes — loading a district-sized
   // preset should not leave the camera inside a building.
   const room = useSceneStore((state) => state.scene.environment.room)
   useEffect(() => {
+    fitFarPlane(room)
     const view = defaultViewFor(room)
     desiredPosition.current.set(...view.position)
     desiredTarget.current.set(...view.target)

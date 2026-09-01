@@ -2,13 +2,15 @@ import type {
   ActorRef,
   AssetCategory,
   AssetDefinition,
+  Dimensions,
   AssetType,
   ObjectMetadata,
   SceneObject,
   Vec3,
 } from '@/types'
 import { HUMAN_ACTOR } from '@/types'
-import { createId, roundVec3 } from '@/utils'
+import { createId, roundTo, roundVec3 } from '@/utils'
+import { customAssetDefinitions, customAssetTypes, getCustomAsset } from './customAssets'
 
 /**
  * The single source of truth for what an asset *is*: its metadata, real-world
@@ -181,7 +183,27 @@ export const ASSET_DEFINITIONS: Record<AssetType, AssetDefinition> = {
 }
 
 /** Stable ordering used by the asset library palette. */
-export const ASSET_TYPES = Object.keys(ASSET_DEFINITIONS) as AssetType[]
+/** The kinds that ship with the app. Runtime-defined kinds are not in here. */
+export const BUILTIN_ASSET_TYPES = Object.keys(ASSET_DEFINITIONS) as AssetType[]
+
+/**
+ * Kept as the built-in list under its original name.
+ *
+ * Anything that needs the *placeable* set — validation, the library panel, the
+ * tool descriptions — must call `allAssetTypes()` instead, because the
+ * catalogue grows at runtime.
+ */
+export const ASSET_TYPES = BUILTIN_ASSET_TYPES
+
+/** Every kind that can be placed right now: the built-in kit plus the world's own. */
+export const allAssetTypes = (): AssetType[] => [...BUILTIN_ASSET_TYPES, ...customAssetTypes()]
+
+export const allAssetDefinitions = (): AssetDefinition[] => [
+  ...BUILTIN_ASSET_TYPES.map((type) => ASSET_DEFINITIONS[type]),
+  ...customAssetDefinitions(),
+]
+
+export const isCustomAssetType = (type: AssetType): boolean => getCustomAsset(type) !== undefined
 
 export const ASSET_CATEGORY_ORDER: AssetCategory[] = [
   'Workstations',
@@ -195,15 +217,33 @@ export const ASSET_CATEGORY_ORDER: AssetCategory[] = [
   'Ambience',
 ]
 
+/**
+ * The definition for a type, built-in or runtime-defined.
+ *
+ * Never throws. A world can reference a type whose definition has gone missing
+ * — an older save, a hand-edited document — and the right answer there is a
+ * plain one-metre placeholder that a person can see and delete, not a crash
+ * that takes the whole viewport with it.
+ */
 export function getAssetDefinition(type: AssetType): AssetDefinition {
-  return ASSET_DEFINITIONS[type]
+  return ASSET_DEFINITIONS[type] ?? getCustomAsset(type) ?? missingAsset(type)
 }
+
+const missingAsset = (type: AssetType): AssetDefinition => ({
+  type,
+  name: `Unknown (${type})`,
+  category: 'Structure',
+  description: `No definition is loaded for "${type}". It is drawn as a placeholder.`,
+  dimensions: { width: 1, height: 1, depth: 1 },
+  defaultColor: '#8f9bb3',
+  clearance: 0,
+})
 
 /** Groups the catalogue for the categorised asset panel. */
 export function groupedAssets(): { category: AssetCategory; assets: AssetDefinition[] }[] {
   return ASSET_CATEGORY_ORDER.map((category) => ({
     category,
-    assets: ASSET_TYPES.map(getAssetDefinition).filter((a) => a.category === category),
+    assets: allAssetDefinitions().filter((a) => a.category === category),
   })).filter((group) => group.assets.length > 0)
 }
 
@@ -277,5 +317,35 @@ export function createSceneObject(
     locked: false,
     visible: true,
     metadata: createMetadata(actor, options),
+  }
+}
+
+/**
+ * The scale that gives an asset a requested real-world size.
+ *
+ * The kit is deliberately small and fixed. Rather than modelling a new
+ * component for every tower, hut or warehouse, an instance is scaled to the
+ * size asked for — so the same `building` covers a two-storey shop and a
+ * forty-metre tower. Axes left out keep the scale they already had.
+ */
+export function scaleForSize(
+  type: AssetType,
+  size: { width?: number; height?: number; depth?: number },
+  current: Vec3 = [1, 1, 1],
+): Vec3 {
+  const base = getAssetDefinition(type).dimensions
+  return [
+    size.width === undefined ? current[0] : roundTo(size.width / base.width, 4),
+    size.height === undefined ? current[1] : roundTo(size.height / base.height, 4),
+    size.depth === undefined ? current[2] : roundTo(size.depth / base.depth, 4),
+  ]
+}
+
+/** An object's actual size on the floor, after scaling. */
+export function sizeOf(object: { dimensions: Dimensions; scale: Vec3 }) {
+  return {
+    width: roundTo(object.dimensions.width * object.scale[0], 3),
+    height: roundTo(object.dimensions.height * object.scale[1], 3),
+    depth: roundTo(object.dimensions.depth * object.scale[2], 3),
   }
 }

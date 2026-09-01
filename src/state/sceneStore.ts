@@ -6,6 +6,7 @@ import type {
   AgentDescriptor,
   AssetType,
   ChangeKind,
+  CustomAssetDefinition,
   EnvironmentSettings,
   HistoryEntry,
   McpState,
@@ -29,6 +30,7 @@ import {
 import { clampToRoom, findSpawnPosition } from '@/tools/placement'
 import { mergeEnvironment, sanitizeEnvironmentPatch } from '@/tools/environment'
 import { createEmptyWorld } from '@/tools/sceneTemplates'
+import { syncCustomAssets } from '@/tools/customAssets'
 import { clearPersistedWorld, loadPersistedWorld, watchWorld } from './persistence'
 import { buildLayout, getLayout } from '@/tools/layouts'
 import { createId, normalizeAngle, roundTo, roundVec3, toDegrees } from '@/utils'
@@ -130,7 +132,16 @@ export interface SceneState {
    * an empty room rather than restoring what was here.
    */
   startFresh: (actor?: ActorRef) => void
-  /** Refurnishes the current room with a named layout, keeping its size and rules. */
+  /**
+   * Adds or replaces a runtime-defined asset kind in the world's own library.
+   *
+   * This is what keeps the catalogue open: a new kind of object is data in the
+   * document, not a new component in the codebase.
+   */
+  defineAsset: (definition: CustomAssetDefinition, actor?: ActorRef) => boolean
+  /** Removes a runtime-defined kind. Refuses while objects still use it. */
+  removeAssetType: (type: AssetType, actor?: ActorRef) => { ok: boolean; inUse: number }
+  /** Rebuilds the world as a named layout, sizing the room to suit it and keeping the rules. */
   generateLayout: (layoutId: string, actor?: ActorRef) => boolean
   /** Applies a whole layout plan as a single undoable change. */
   applyLayout: (assignments: LayoutAssignment[], label: string, actor?: ActorRef) => number
@@ -705,18 +716,75 @@ export const useSceneStore = create<SceneState>()((set, get) => {
      *
      * One undoable change, so trying a layout and going back is a single step.
      */
-    generateLayout: (layoutId, actor = HUMAN_ACTOR) => {
+    defineAsset: (definition, actor = HUMAN_ACTOR) => {
       const before = get().scene
-      const definition = getLayout(layoutId)
-      const built = buildLayout(layoutId, before.environment.room)
-      if (!definition || !built) return false
+      const library = before.assetLibrary ?? []
+      const existing = library.some((entry) => entry.type === definition.type)
+      const next = existing
+        ? library.map((entry) => (entry.type === definition.type ? definition : entry))
+        : [...library, definition]
 
       record(
         before,
-        { ...before, objects: built.objects, zones: built.zones },
+        { ...before, assetLibrary: next },
         {
           kind: 'load',
-          label: `Generated the ${definition.name} layout · ${built.objects.length} objects`,
+          label: `${existing ? 'Redefined' : 'Defined'} the "${definition.name}" asset · ${definition.parts.length} parts`,
+          actor,
+          targetIds: [],
+        },
+        'success',
+      )
+
+      // Existing objects of a redefined kind keep their own dimensions until
+      // they are touched, so a redefinition can never silently resize things
+      // that the constraint report was already computed against.
+      return true
+    },
+
+    removeAssetType: (type, actor = HUMAN_ACTOR) => {
+      const before = get().scene
+      const inUse = before.objects.filter((object) => object.type === type).length
+      if (inUse > 0) return { ok: false, inUse }
+
+      const library = before.assetLibrary ?? []
+      if (!library.some((entry) => entry.type === type)) return { ok: false, inUse: 0 }
+
+      record(
+        before,
+        { ...before, assetLibrary: library.filter((entry) => entry.type !== type) },
+        { kind: 'load', label: `Removed the "${type}" asset kind`, actor, targetIds: [] },
+        'success',
+      )
+      return { ok: true, inUse: 0 }
+    },
+
+    generateLayout: (layoutId, actor = HUMAN_ACTOR) => {
+      const before = get().scene
+      const definition = getLayout(layoutId)
+      if (!definition) return false
+
+      // The layout sizes the room, not the other way round. A city district
+      // asked for inside a classroom-sized room would otherwise be built at
+      // the wrong scale or clipped at the walls.
+      const room = definition.room ?? before.environment.room
+      const built = buildLayout(layoutId, room)
+      if (!built) return false
+
+      const resized = room !== before.environment.room
+      record(
+        before,
+        {
+          ...before,
+          objects: built.objects,
+          zones: built.zones,
+          environment: { ...before.environment, room },
+        },
+        {
+          kind: 'load',
+          label: `Generated the ${definition.name} layout · ${built.objects.length} objects${
+            resized ? ` · room ${room.width}×${room.depth} m` : ''
+          }`,
           actor,
           targetIds: [],
         },
@@ -942,6 +1010,16 @@ function describeCommit(kind: ChangeKind, object?: SceneObject): string {
       return `Edited ${object.label}`
   }
 }
+
+// The runtime asset lookup is derived from the world document, so it has to be
+// rebuilt whenever the document changes — including undo, redo, loading a
+// preset and restoring a saved world, not just when an asset is defined.
+syncCustomAssets(useSceneStore.getState().scene)
+useSceneStore.subscribe((state, previous) => {
+  if (state.scene.assetLibrary !== previous.scene.assetLibrary) {
+    syncCustomAssets(state.scene)
+  }
+})
 
 // Persist the world as it changes. Registered here so every path — human edits,
 // agent tools, layout generation, undo — is covered by one subscription.

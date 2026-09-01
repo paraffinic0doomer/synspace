@@ -23,7 +23,12 @@ import {
   ZoneOverlay,
 } from './environment'
 import { SceneObjects } from './SceneObjects'
-import { CameraRig, DEFAULT_CAMERA_POSITION, DEFAULT_CAMERA_TARGET } from './CameraRig'
+import {
+  CameraRig,
+  DEFAULT_CAMERA_POSITION,
+  DEFAULT_CAMERA_TARGET,
+  roomScale,
+} from './CameraRig'
 
 /**
  * The 3D viewport.
@@ -54,6 +59,12 @@ export function Viewport() {
     showLabels,
   } = environment
 
+  // Orbit range and fog are both distances in metres, so both have to follow
+  // the room. Left at their 18 x 14 m values, a city district is clamped to a
+  // 60 m orbit and fogged out past 78 m — most of the world would be invisible
+  // however far the camera was told to pull back.
+  const scale = roomScale(room)
+
   return (
     <Canvas
       shadows={shadowsEnabled}
@@ -68,7 +79,7 @@ export function Viewport() {
       }
     >
       <color attach="background" args={[backgroundColor]} />
-      <fog attach="fog" args={[backgroundColor, 28, 78]} />
+      <fog attach="fog" args={[backgroundColor, 28 * scale, 78 * scale]} />
 
       <Suspense fallback={null}>
         <Lighting environment={environment} />
@@ -97,7 +108,7 @@ export function Viewport() {
         enableDamping
         dampingFactor={0.08}
         minDistance={2}
-        maxDistance={60}
+        maxDistance={60 * scale}
         maxPolarAngle={Math.PI / 2.06}
         panSpeed={0.9}
         zoomSpeed={0.8}

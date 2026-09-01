@@ -69,6 +69,9 @@ function TabButton({ active, onClick, icon, children }: TabButtonProps) {
 function AssetLibrary() {
   const [query, setQuery] = useState('')
   const addObject = useSceneStore((state) => state.addObject)
+  // The catalogue is not static: an agent can define new kinds mid-session, and
+  // they belong in the library the moment they exist.
+  const assetLibrary = useSceneStore((state) => state.scene.assetLibrary)
 
   const groups = useMemo(() => {
     const needle = query.trim().toLowerCase()
@@ -85,7 +88,7 @@ function AssetLibrary() {
           : group.assets,
       }))
       .filter((group) => group.assets.length > 0)
-  }, [query])
+  }, [query, assetLibrary])
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">

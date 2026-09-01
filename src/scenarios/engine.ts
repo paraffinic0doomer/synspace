@@ -1,6 +1,5 @@
 import {
   buildOccupancyGrid,
-  DEFAULT_CELL_SIZE,
   distanceBetween,
   evaluateConstraints,
   footprintsOverlap,
@@ -351,7 +350,7 @@ export function calculateWorldMetrics(
 ): WorldMetrics {
   const visible = world.objects.filter((object) => object.visible)
   const report = evaluateConstraints(world)
-  const grid = buildOccupancyGrid(visible, world.environment.room, DEFAULT_CELL_SIZE)
+  const grid = buildOccupancyGrid(visible, world.environment.room)
   const blockedCells = grid.blocked.reduce((count, blocked) => count + blocked, 0)
   const floorAreaSqm = roundTo(world.environment.room.width * world.environment.room.depth, 3)
   const occupiedAreaSqm = roundTo(

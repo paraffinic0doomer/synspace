@@ -19,7 +19,7 @@ import {
   type Footprint,
   type Point2,
 } from './geometry'
-import { DEFAULT_CELL_SIZE, buildOccupancyGrid, widestPath } from './occupancy'
+import { buildOccupancyGrid, widestPath } from './occupancy'
 
 /**
  * Reusable spatial queries over the world.
@@ -264,7 +264,6 @@ export function pathClearance(world: World, from: Point2, to: Point2): PathClear
   const grid = buildOccupancyGrid(
     world.objects.filter((object) => object.visible),
     world.environment.room,
-    DEFAULT_CELL_SIZE,
   )
   const result = widestPath(grid, from, to)
   return {

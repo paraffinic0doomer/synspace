@@ -1,4 +1,5 @@
 import { PALETTE, SURFACE } from '../materials'
+import { labelTexture } from '../labelTexture'
 import type { AssetProps } from './types'
 
 const WIDTH = 8
@@ -12,9 +13,10 @@ const DEPTH = 8
  * layout the question is usually "can an ambulance still reach *this* one",
  * so it has to be identifiable at a glance.
  */
-export function Hospital({ color }: AssetProps) {
+export function Hospital({ color, label }: AssetProps) {
   const floors = [1.8, 3.6, 5.4]
   const columns = [-2.6, -1.3, 1.3, 2.6]
+  const sign = labelTexture(label ?? 'Hospital', '#f2617a')
 
   return (
     <group>
@@ -65,6 +67,20 @@ export function Hospital({ color }: AssetProps) {
           {...SURFACE.satin}
         />
       </mesh>
+
+      {/* Fascia name board under the cross */}
+      {sign && (
+        <>
+          <mesh position={[0, 4.55, DEPTH / 2 + 0.03]}>
+            <planeGeometry args={[6.2, 1.0]} />
+            <meshStandardMaterial color="#f7fafd" {...SURFACE.matte} />
+          </mesh>
+          <mesh position={[0, 4.55, DEPTH / 2 + 0.05]}>
+            <planeGeometry args={[6.0, 0.9]} />
+            <meshBasicMaterial map={sign} transparent toneMapped={false} />
+          </mesh>
+        </>
+      )}
 
       {/* The cross that makes it legible */}
       <mesh position={[0, 5.9, DEPTH / 2 + 0.03]}>

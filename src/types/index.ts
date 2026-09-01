@@ -22,6 +22,11 @@ export type {
   TransformMode,
   AssetDefinition,
   AssetCategory,
+  AssetPart,
+  BuiltinAssetType,
+  CustomAssetDefinition,
+  PartFinish,
+  PartShape,
 } from './scene'
 
 export type {

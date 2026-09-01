@@ -12,9 +12,10 @@ import type {
   WorldMetrics,
 } from '@/types'
 import { agentActor } from '@/types'
-import { ASSET_TYPES } from '@/tools'
+
 import { toDegrees } from '@/utils'
 import type { SynSpaceTool, ToolOutcome } from './tools'
+import { assetKindDescription } from './validation'
 import {
   asRecord,
   optionalIdList,
@@ -224,7 +225,7 @@ const operationSchema = {
       type: 'object',
       properties: {
         kind: { const: 'add_object' },
-        asset_type: { type: 'string', enum: ASSET_TYPES },
+        asset_type: { type: 'string', description: assetKindDescription('Kind of asset to add.') },
         count: { type: 'integer', minimum: 1, maximum: 50 },
         zone_id: { type: 'string' },
         x: numberSchema,

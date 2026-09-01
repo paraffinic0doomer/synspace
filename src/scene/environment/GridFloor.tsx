@@ -13,6 +13,12 @@ interface GridFloorProps {
 export function GridFloor({ room, showGrid }: GridFloorProps) {
   const span = Math.max(room.width, room.depth)
 
+  // Half-metre cells read as texture in a room, but as noise across a city
+  // block. The grid is there to give a sense of scale, so it steps up with the
+  // room rather than drawing tens of thousands of lines.
+  const cellSize = span <= 30 ? 0.5 : span <= 80 ? 2 : 5
+  const sectionSize = cellSize * 4
+
   return (
     <group>
       {/* Floor slab (receives the key light's shadows) */}
@@ -31,10 +37,10 @@ export function GridFloor({ room, showGrid }: GridFloorProps) {
         <Grid
           position={[0, 0.008, 0]}
           args={[room.width, room.depth]}
-          cellSize={0.5}
+          cellSize={cellSize}
           cellThickness={0.6}
           cellColor="#39445c"
-          sectionSize={2}
+          sectionSize={sectionSize}
           sectionThickness={1.1}
           sectionColor="#4f8cff"
           fadeDistance={span * 2.2}

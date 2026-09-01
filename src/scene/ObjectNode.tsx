@@ -3,7 +3,8 @@ import type { Group, Object3D } from 'three'
 import type { ThreeEvent } from '@react-three/fiber'
 import { Edges, Html } from '@react-three/drei'
 import type { SceneObject } from '@/types'
-import { ASSET_COMPONENTS } from './assets'
+import { ASSET_COMPONENTS, CompositeAsset } from './assets'
+import { getCustomAsset } from '@/tools/customAssets'
 
 interface ObjectNodeProps {
   object: SceneObject
@@ -29,7 +30,11 @@ export const ObjectNode = forwardRef<Group, ObjectNodeProps>(function ObjectNode
   { object, selected, hovered, showLabel, onSelect, onHover },
   ref,
 ) {
+  // Built-in kinds have a component; runtime-defined kinds are drawn from the
+  // parts their definition carries. Everything downstream — selection cage,
+  // footprint ring, label — is identical either way.
   const Asset = ASSET_COMPONENTS[object.type]
+  const custom = Asset ? undefined : getCustomAsset(object.type)
   const { width, height, depth } = object.dimensions
 
   const handlePointerDown = useCallback(
@@ -70,7 +75,13 @@ export const ObjectNode = forwardRef<Group, ObjectNodeProps>(function ObjectNode
       onPointerOver={handlePointerOver}
       onPointerOut={handlePointerOut}
     >
-      <Asset color={object.color} />
+      {Asset ? (
+        <Asset color={object.color} label={object.label} />
+      ) : custom ? (
+        <CompositeAsset color={object.color} label={object.label} definition={custom} />
+      ) : (
+        <PlaceholderAsset color={object.color} dimensions={object.dimensions} />
+      )}
 
       {/* Selection / hover cage — never intercepts picking */}
       {showOutline && (
@@ -114,6 +125,28 @@ export const ObjectNode = forwardRef<Group, ObjectNodeProps>(function ObjectNode
     </group>
   )
 })
+
+/**
+ * Drawn when a world references a type nothing can resolve.
+ *
+ * Visible and selectable on purpose: a silently missing object would still take
+ * up floor space in every constraint check, with nothing on screen to explain
+ * why the room does not add up.
+ */
+function PlaceholderAsset({
+  color,
+  dimensions,
+}: {
+  color: string
+  dimensions: { width: number; height: number; depth: number }
+}) {
+  return (
+    <mesh position={[0, dimensions.height / 2, 0]} castShadow>
+      <boxGeometry args={[dimensions.width, dimensions.height, dimensions.depth]} />
+      <meshStandardMaterial color={color} wireframe />
+    </mesh>
+  )
+}
 
 /** Keeps helper geometry out of the picking pass. */
 function ignoreRaycast(this: Object3D) {
