@@ -1,0 +1,10 @@
+# Keep line endings stable across machines. Without this, a Windows checkout
+# rewrites files to CRLF and the next commit from another machine shows every
+# line as changed.
+* text=auto eol=lf
+
+*.png binary
+*.jpg binary
+*.ico binary
+*.woff binary
+*.woff2 binary

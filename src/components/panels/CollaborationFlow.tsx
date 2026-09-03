@@ -92,6 +92,25 @@ export function CollaborationFlow() {
   }, [activity, proposals])
 
   const waiting = stages.some((stage) => stage.state === 'waiting')
+  const started = stages.some((stage) => stage.state !== 'idle')
+
+  // Before an agent has done anything, all four stages read "not yet" — four
+  // columns of nothing, permanently occupying the top of the console. Until the
+  // loop actually starts, one quiet line says the same thing in a tenth of the
+  // space; the full strip appears the moment there is progress to track.
+  if (!started) {
+    return (
+      <div className="sticky top-0 z-10 flex items-center gap-2 border-b border-ink-800 bg-ink-900/95 px-2.5 py-1.5 backdrop-blur">
+        <span className="inline-flex h-2 w-2 shrink-0 rounded-full bg-ink-700" />
+        <span className="font-mono text-[9px] tracking-[0.14em] text-ink-600 uppercase">
+          Observe → Analyze → Propose → Apply
+        </span>
+        <span className="truncate text-[10.5px] text-ink-600">
+          — no agent activity yet in this session.
+        </span>
+      </div>
+    )
+  }
 
   return (
     <div className="sticky top-0 z-10 border-b border-ink-800 bg-ink-900/95 backdrop-blur">

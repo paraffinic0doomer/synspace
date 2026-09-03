@@ -12,7 +12,7 @@ import {
 } from '@/state'
 import { SHORTCUTS, requestResetView } from '@/tools'
 import type { TransformMode } from '@/types'
-import { Badge, Icon, IconButton, SegmentedControl, StatusDot } from '@/components/ui'
+import { Icon, IconButton, SegmentedControl, StatusDot } from '@/components/ui'
 
 const MODE_OPTIONS: {
   value: TransformMode
@@ -84,27 +84,18 @@ export function HeaderBar({
         <div className="relative grid h-8 w-8 place-items-center rounded-[9px] border border-brand-500/40 bg-linear-to-br from-brand-500/25 to-signal-500/10">
           <Icon name="cube" size={17} className="text-brand-400" />
         </div>
-        <div className="leading-tight">
-          <div className="flex items-center gap-1.5">
-            <span className="text-[13.5px] font-semibold tracking-tight text-ink-100">
-              SynSpace
+        {/* The product name and the open document read as one unit: what this
+            is, and what you have open. The tagline belongs on a landing page,
+            not in working chrome that a person looks at all day. */}
+        <div className="min-w-0 leading-tight">
+          <span className="text-[13.5px] font-semibold tracking-tight text-ink-100">SynSpace</span>
+          <span className="hidden min-w-0 items-center gap-1.5 lg:flex">
+            <span className="truncate text-[11px] text-ink-400">{sceneName}</span>
+            <span className="font-mono text-[10px] text-ink-600">
+              {stats.floorArea} m² · rev {revision}
             </span>
-            <Badge>v0.3</Badge>
-          </div>
-          <span className="text-[10.5px] tracking-wide text-brand-400/90">
-            One world. Two minds.
           </span>
         </div>
-      </div>
-
-      <div className="h-7 w-px bg-ink-750" />
-
-      {/* Document context — counts live in the viewport's world-state bar */}
-      <div className="hidden min-w-0 flex-col leading-tight lg:flex">
-        <span className="truncate text-[12px] font-medium text-ink-200">{sceneName}</span>
-        <span className="font-mono text-[10.5px] text-ink-500">
-          {stats.floorArea} m² floor · rev {revision}
-        </span>
       </div>
 
       <div className="ml-auto flex items-center gap-2">
@@ -213,14 +204,13 @@ export function HeaderBar({
             tone={mcp.status === 'connected' ? 'signal' : mcp.status === 'error' ? 'danger' : 'warn'}
             pulse={mcp.status === 'connected'}
           />
+          {/* The count is the fact worth seeing; which surface it bound to and
+              the full tool list live in the tooltip. */}
           <span className="text-[11.5px] text-ink-300">
             <span className="font-medium text-ink-100">
               {mcp.status === 'connected' ? mcp.toolNames.length : agents.length}
             </span>{' '}
             {mcp.status === 'connected' ? 'tools' : 'agents'}
-          </span>
-          <span className="hidden font-mono text-[10px] text-ink-500 xl:inline">
-            {mcp.status === 'connected' ? 'webmcp live' : 'webmcp offline'}
           </span>
         </div>
 

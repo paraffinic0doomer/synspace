@@ -112,6 +112,9 @@ function AssetLibrary() {
             </button>
           )}
         </label>
+        <p className="pt-1.5 text-[10px] text-ink-600">
+          Click an asset to drop it into a free spot.
+        </p>
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto pb-4">
@@ -137,12 +140,6 @@ function AssetLibrary() {
         ))}
       </div>
 
-      <footer className="shrink-0 border-t border-ink-750 px-3 py-2">
-        <p className="flex items-center gap-1.5 text-[10.5px] leading-relaxed text-ink-500">
-          <Icon name="info" size={12} className="shrink-0" />
-          Click an asset to drop it into a free spot in the room.
-        </p>
-      </footer>
     </div>
   )
 }
@@ -159,16 +156,19 @@ function AssetCard({ asset, onPlace }: AssetCardProps) {
       type="button"
       onClick={onPlace}
       title={`${asset.name} — ${asset.description}`}
-      className="group flex flex-col items-start gap-2 rounded-lg border border-ink-750 bg-ink-850 p-2.5 text-left transition-all hover:-translate-y-px hover:border-brand-500/50 hover:bg-ink-800 active:translate-y-0"
+      className="group flex flex-col items-start gap-1.5 rounded-lg border border-ink-750 bg-ink-850 p-1.5 text-left transition-all hover:-translate-y-px hover:border-brand-500/50 hover:bg-ink-800 active:translate-y-0"
     >
-      <span className="grid h-11 w-full place-items-center rounded-md border border-ink-750 bg-ink-900 text-ink-400 transition-colors group-hover:border-brand-500/30 group-hover:text-brand-400">
-        <AssetGlyph type={asset.type} size={28} />
+      <span className="grid h-9 w-full place-items-center rounded-md border border-ink-750 bg-ink-900 text-ink-400 transition-colors group-hover:border-brand-500/30 group-hover:text-brand-400">
+        <AssetGlyph type={asset.type} size={24} />
       </span>
-      <span className="w-full">
-        <span className="block truncate text-[11.5px] font-medium text-ink-200 group-hover:text-ink-100">
+      <span className="w-full px-0.5 pb-0.5">
+        <span className="block truncate text-[11px] font-medium text-ink-200 group-hover:text-ink-100">
           {asset.name}
         </span>
-        <span className="block truncate font-mono text-[9.5px] text-ink-500">
+        {/* Dimensions only on hover: they matter when you are choosing between
+            two similar things, not while scanning a wall of them. The title
+            attribute keeps them reachable without pointing at all. */}
+        <span className="block truncate font-mono text-[9.5px] text-ink-600 transition-colors group-hover:text-ink-400">
           {formatDimensions(width, height, depth)}
         </span>
       </span>

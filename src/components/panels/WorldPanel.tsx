@@ -12,7 +12,7 @@ import { ZONE_KIND_LABELS } from '@/tools/zones'
 import type { ConstraintViolation, EnvironmentSettings } from '@/types'
 import { COORDINATE_SYSTEM, SYSTEM_ACTOR } from '@/types'
 import { roundTo } from '@/utils'
-import { Badge, EmptyState, Icon, SectionLabel, ToggleRow } from '@/components/ui'
+import { Badge, Disclosure, EmptyState, Icon, SectionLabel, ToggleRow } from '@/components/ui'
 import { WhatIfPanel } from './WhatIfPanel'
 
 /**
@@ -59,33 +59,50 @@ export function WorldPanel() {
         </SectionLabel>
         <div className="mx-2.5 rounded-lg border border-ink-750 bg-ink-850 p-2.5">
           <p className="text-[11px] leading-relaxed text-ink-300">{metadata.description}</p>
+
+          {/* The two numbers you actually work against stay on the face of the
+              panel. The coordinate convention and the storage behaviour are
+              read once a session, so they move behind a disclosure rather than
+              out of the product. */}
           <dl className="grid grid-cols-2 gap-x-3 gap-y-1 pt-2">
             <Stat label="Room" value={`${environment.room.width} × ${environment.room.depth} m`} />
             <Stat label="Wall height" value={`${environment.room.wallHeight} m`} />
-            <Stat
-              label="X range"
-              value={`${-environment.room.width / 2} … ${environment.room.width / 2}`}
-            />
-            <Stat
-              label="Z range"
-              value={`${-environment.room.depth / 2} … ${environment.room.depth / 2}`}
-            />
           </dl>
-          <p className="pt-2 text-[10px] leading-relaxed text-ink-500">
-            Units {COORDINATE_SYSTEM.units}. Origin at the floor centre, +Y up.{' '}
-            {COORDINATE_SYSTEM.rotation.convention}
-          </p>
-          <p className="flex items-center gap-1.5 pt-2 text-[10px] text-ink-500">
-            <Icon name="download" size={11} className="shrink-0 text-signal-400" />
-            Saved in this browser — a refresh brings it back. Use{' '}
-            <span className="text-ink-300">Start fresh</span> in the outliner to begin from an
-            empty room.
-          </p>
-          <div className="flex flex-wrap gap-1 pt-2">
-            {metadata.tags.map((tag) => (
-              <Badge key={tag}>{tag}</Badge>
-            ))}
+
+          <div className="pt-1.5">
+            <Disclosure summary="Coordinates and storage" hint={COORDINATE_SYSTEM.units}>
+              <dl className="grid grid-cols-2 gap-x-3 gap-y-1">
+                <Stat
+                  label="X range"
+                  value={`${-environment.room.width / 2} … ${environment.room.width / 2}`}
+                />
+                <Stat
+                  label="Z range"
+                  value={`${-environment.room.depth / 2} … ${environment.room.depth / 2}`}
+                />
+              </dl>
+              <p className="pt-1.5 text-[10px] leading-relaxed text-ink-500">
+                Units {COORDINATE_SYSTEM.units}. Origin at the floor centre, +Y up.{' '}
+                {COORDINATE_SYSTEM.rotation.convention}
+              </p>
+              <p className="flex items-start gap-1.5 pt-1.5 text-[10px] leading-relaxed text-ink-500">
+                <Icon name="download" size={11} className="mt-px shrink-0 text-signal-400" />
+                <span>
+                  Saved in this browser — a refresh brings it back. Use{' '}
+                  <span className="text-ink-300">Start fresh</span> in the outliner to begin from
+                  an empty room.
+                </span>
+              </p>
+            </Disclosure>
           </div>
+
+          {metadata.tags.length > 0 && (
+            <div className="flex flex-wrap gap-1 pt-2">
+              {metadata.tags.map((tag) => (
+                <Badge key={tag}>{tag}</Badge>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Presets: the same engine with different objects, zones and rules. */}
