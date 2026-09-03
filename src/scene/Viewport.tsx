@@ -23,6 +23,7 @@ import {
   ZoneOverlay,
 } from './environment'
 import { SceneObjects } from './SceneObjects'
+import { backgroundFor, useSceneSurfaces } from './sceneTheme'
 import {
   CameraRig,
   DEFAULT_CAMERA_POSITION,
@@ -51,7 +52,6 @@ export function Viewport() {
     showGrid,
     showRoom,
     shadowsEnabled,
-    backgroundColor,
     showZones,
     showBoundary,
     showWarnings,
@@ -64,6 +64,12 @@ export function Viewport() {
   // 60 m orbit and fogged out past 78 m — most of the world would be invisible
   // however far the camera was told to pull back.
   const scale = roomScale(room)
+
+  // The theme supplies the neutral stage; a mood the world explicitly chose
+  // (sunset, cyberpunk) always wins, so switching to light chrome never
+  // silently repaints a scene someone asked for.
+  const surfaces = useSceneSurfaces()
+  const background = backgroundFor(environment, surfaces)
 
   return (
     <Canvas
@@ -78,11 +84,11 @@ export function Viewport() {
         </div>
       }
     >
-      <color attach="background" args={[backgroundColor]} />
-      <fog attach="fog" args={[backgroundColor, 28 * scale, 78 * scale]} />
+      <color attach="background" args={[background]} />
+      <fog attach="fog" args={[background, 28 * scale, 78 * scale]} />
 
       <Suspense fallback={null}>
-        <Lighting environment={environment} />
+        <Lighting environment={environment} surfaces={surfaces} />
         <GridFloor room={room} showGrid={showGrid} />
         {showRoom && <RoomShell room={room} />}
         {showZones && <ZoneOverlay zones={zones} showLabels={showLabels} />}

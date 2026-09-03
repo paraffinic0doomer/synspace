@@ -30,6 +30,18 @@ export {
 export type { DefineAssetInput } from './customAssets'
 
 export {
+  WORLD_FILE_EXTENSION,
+  WORLD_FILE_FORMAT,
+  WORLD_FILE_VERSION,
+  downloadWorld,
+  dragHasFile,
+  parseWorldFile,
+  serializeWorld,
+  worldFileName,
+} from './worldFile'
+export type { ParseResult, WorldFile } from './worldFile'
+
+export {
   DEFAULT_ROOM,
   DEFAULT_ENVIRONMENT,
   ENVIRONMENT_LIMITS,

@@ -61,3 +61,13 @@ export {
   useDisplayedObjects,
 } from './proposalStore'
 export type { ProposalState, WorldView } from './proposalStore'
+
+export {
+  useThemeStore,
+  applyTheme,
+  resolveTheme,
+  readStoredPreference,
+  systemTheme,
+  watchSystemTheme,
+} from './themeStore'
+export type { ResolvedTheme, ThemePreference } from './themeStore'

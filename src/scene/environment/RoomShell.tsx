@@ -1,4 +1,6 @@
 import { BackSide } from 'three'
+import { useSceneSurfaces } from '../sceneTheme'
+import { useThemeStore } from '@/state'
 import type { RoomConfig } from '@/types'
 
 interface RoomShellProps {
@@ -24,29 +26,34 @@ export function RoomShell({ room }: RoomShellProps) {
     { key: 'east', position: [halfW - 0.03, 0.06, 0], size: [0.06, 0.12, depth] },
   ]
 
+  const surfaces = useSceneSurfaces()
+  const light = useThemeStore((state) => state.resolved) === 'light'
+
   return (
     <group>
       {/* Inverted shell */}
       <mesh position={[0, wallHeight / 2, 0]} receiveShadow>
         <boxGeometry args={[width, wallHeight, depth]} />
-        <meshStandardMaterial color="#2c3242" side={BackSide} roughness={0.95} metalness={0.02} />
+        <meshStandardMaterial color={surfaces.wall} side={BackSide} roughness={0.95} metalness={0.02} />
       </mesh>
 
       {/* Baseboard trim */}
       {baseboards.map(({ key, position, size }) => (
         <mesh key={key} position={position}>
           <boxGeometry args={size} />
-          <meshStandardMaterial color="#3d4560" roughness={0.7} metalness={0.1} />
+          <meshStandardMaterial color={surfaces.wallBase} roughness={0.7} metalness={0.1} />
         </mesh>
       ))}
 
-      {/* Accent light strip running the north wall */}
+      {/* Accent light strip running the north wall. An emissive line reads as
+          light in a dark room and as a smudge on a pale one, so in the light
+          theme it becomes a plain painted band instead. */}
       <mesh position={[0, wallHeight - 0.35, -halfD + 0.05]}>
         <boxGeometry args={[width * 0.72, 0.04, 0.02]} />
         <meshStandardMaterial
-          color="#4f8cff"
-          emissive="#4f8cff"
-          emissiveIntensity={2.2}
+          color={surfaces.gridSection}
+          emissive={surfaces.gridSection}
+          emissiveIntensity={light ? 0 : 2.2}
           toneMapped={false}
         />
       </mesh>

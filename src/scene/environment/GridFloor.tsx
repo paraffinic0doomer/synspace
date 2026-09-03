@@ -1,4 +1,5 @@
 import { Grid } from '@react-three/drei'
+import { useSceneSurfaces } from '../sceneTheme'
 import type { RoomConfig } from '@/types'
 
 interface GridFloorProps {
@@ -11,6 +12,7 @@ interface GridFloorProps {
  * The slab is one plane, so shadow receiving stays cheap.
  */
 export function GridFloor({ room, showGrid }: GridFloorProps) {
+  const surfaces = useSceneSurfaces()
   const span = Math.max(room.width, room.depth)
 
   // Half-metre cells read as texture in a room, but as noise across a city
@@ -24,13 +26,13 @@ export function GridFloor({ room, showGrid }: GridFloorProps) {
       {/* Floor slab (receives the key light's shadows) */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]} receiveShadow>
         <planeGeometry args={[room.width, room.depth]} />
-        <meshStandardMaterial color="#20242f" roughness={0.92} metalness={0.04} />
+        <meshStandardMaterial color={surfaces.floor} roughness={0.92} metalness={0.04} />
       </mesh>
 
       {/* Surrounding apron so the room does not float in the void */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.02, 0]}>
         <planeGeometry args={[span * 4, span * 4]} />
-        <meshStandardMaterial color="#12151d" roughness={1} metalness={0} />
+        <meshStandardMaterial color={surfaces.apron} roughness={1} metalness={0} />
       </mesh>
 
       {showGrid && (
@@ -39,10 +41,10 @@ export function GridFloor({ room, showGrid }: GridFloorProps) {
           args={[room.width, room.depth]}
           cellSize={cellSize}
           cellThickness={0.6}
-          cellColor="#39445c"
+          cellColor={surfaces.gridCell}
           sectionSize={sectionSize}
           sectionThickness={1.1}
-          sectionColor="#4f8cff"
+          sectionColor={surfaces.gridSection}
           fadeDistance={span * 2.2}
           fadeStrength={1.2}
           infiniteGrid

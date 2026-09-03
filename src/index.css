@@ -41,6 +41,59 @@
   --radius-panel: 0.625rem;
 }
 
+
+/* ---------------------------------------------------------------------------
+   Light theme
+
+   The whole palette is one ramp: ink-950 is the furthest-back surface and
+   ink-100 the strongest text. Light mode redefines that ramp rather than
+   restyling components, so every panel, border and label flips from one block
+   and no component needs to know a theme exists.
+
+   Surfaces still get lighter as they come forward — a grey app ground, lighter
+   panels, white controls — which is the same depth cue the dark theme uses,
+   not a naive inversion.
+
+   `data-theme` is always stamped explicitly by the theme store (a "system"
+   preference is resolved to a concrete value first), so one selector covers it.
+--------------------------------------------------------------------------- */
+:root[data-theme='light'] {
+  color-scheme: light;
+
+  --color-ink-950: #e8ecf3;
+  --color-ink-900: #f7f9fc;
+  --color-ink-850: #ffffff;
+  --color-ink-800: #eaeff7;
+  --color-ink-750: #dbe2ec;
+  --color-ink-700: #ccd5e2;
+  --color-ink-650: #b9c4d4;
+  --color-ink-600: #9aa7bc;
+  --color-ink-500: #78869e;
+  --color-ink-400: #5d6b83;
+  --color-ink-300: #44526a;
+  --color-ink-200: #263144;
+  --color-ink-100: #0d1420;
+
+  /* Accents are darkened, not reused. The dark theme's blues and greens are
+     tuned to glow against near-black and fail contrast on white. */
+  --color-brand-700: #17408f;
+  --color-brand-600: #1f57bd;
+  --color-brand-500: #2f6fe4;
+  --color-brand-400: #2360cc;
+
+  --color-signal-600: #0a7a5e;
+  --color-signal-500: #0d9a78;
+  --color-signal-400: #0a8064;
+
+  --color-warn-500: #a96f00;
+  --color-danger-500: #cf3552;
+  --color-danger-600: #b32742;
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+}
+
 @layer base {
   * {
     border-color: var(--color-ink-700);
@@ -170,6 +223,18 @@
         ellipse 120% 90% at 50% 40%,
         transparent 45%,
         color-mix(in oklab, var(--color-ink-950) 65%, transparent) 100%
+      );
+  }
+
+  /* A vignette darkens the edges to make the viewport read as a lit stage.
+     On a light ground that same gradient just looks like dirt, so it softens
+     to a barely-there edge instead of being reused at full strength. */
+  :root[data-theme='light'] .viewport-vignette {
+    background:
+      radial-gradient(
+        ellipse 120% 90% at 50% 40%,
+        transparent 55%,
+        color-mix(in oklab, var(--color-ink-600) 18%, transparent) 100%
       );
   }
 }

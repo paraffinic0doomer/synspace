@@ -3,9 +3,11 @@ import { Environment, Lightformer } from '@react-three/drei'
 import type { DirectionalLight } from 'three'
 import { useSceneObjects } from '@/state'
 import type { EnvironmentSettings } from '@/types'
+import { ambientFor, type SceneSurfaces } from '../sceneTheme'
 
 interface LightingProps {
   environment: EnvironmentSettings
+  surfaces: SceneSurfaces
 }
 
 /**
@@ -15,15 +17,15 @@ interface LightingProps {
  * HDRI, so the app has no network dependency and still gets soft reflections.
  * Only the key light casts shadows — that keeps the shadow cost to one map.
  */
-export function Lighting({ environment }: LightingProps) {
+export function Lighting({ environment, surfaces }: LightingProps) {
   const {
     room,
-    ambientIntensity,
     ambientColor,
     keyLightIntensity,
     keyLightColor,
     shadowsEnabled,
   } = environment
+  const ambientIntensity = ambientFor(environment, surfaces)
   const span = Math.max(room.width, room.depth)
   const shadowExtent = span * 0.75
 

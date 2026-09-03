@@ -26,6 +26,8 @@ reviewable as a person's.
 - [Worlds, presets and layouts](#worlds-presets-and-layouts)
 - [What-if simulation](#what-if-simulation)
 - [Interaction and UI](#interaction-and-ui)
+- [Import and export](#import-and-export)
+- [Light and dark](#light-and-dark)
 - [Verification](#verification)
 - [Performance](#performance)
 - [Not built yet](#not-built-yet)
@@ -58,7 +60,7 @@ Three properties make it work:
 ```bash
 npm install
 npm run dev         # http://localhost:5173
-npm test            # 58 deterministic spatial, scenario + tool checks
+npm test            # 82 deterministic spatial, scenario + tool checks
 npm run typecheck
 npm run build       # tsc -b && vite build
 npm run preview
@@ -581,6 +583,28 @@ The interface is ranked rather than flattened: what you need while working stays
 on screen, and reference material — coordinate conventions, storage behaviour,
 navigation keys — sits one click away behind a disclosure. Nothing is removed.
 
+### Light and dark
+
+The whole palette is one ramp — `ink-950` is the furthest-back surface,
+`ink-100` the strongest text — so light mode redefines that ramp in a single CSS
+block rather than restyling components. No component knows a theme exists.
+Accents are darkened rather than reused: the dark theme's blues and greens are
+tuned to glow against near-black and fail contrast on white.
+
+The 3D viewport follows too. The room shell, floor and grid describe the
+*stage*, not the world standing on it, so they are theme-aware; object colours
+are world data and are left alone. Two rules keep that honest:
+
+- **Theme is a viewer preference, never world data.** Switching it cannot dirty
+  the world, bump its revision or land in the undo stack — verified by test.
+- **An explicitly chosen mood always wins.** Only the default `studio` mood
+  defers to the theme. If an agent was asked for a `sunset`, switching to light
+  chrome does not quietly repaint it.
+
+The control in the header cycles system → light → dark. "System" is resolved to
+a concrete value and stamped on `<html>` by an inline script before React
+renders, so a light-theme viewer never gets a black flash on load.
+
 The docks are fixed-width, which on a narrow surface leaves nothing for the world
 itself. Since the world *is* the product, the docks give way first: they become
 overlay drawers below their breakpoints, and the header exposes toggles.
@@ -591,12 +615,39 @@ copy. Undo history and scenarios are session work and are deliberately *not*
 restored — reviving an undo stack whose snapshots reference a page that no longer
 exists would be worse than starting clean.
 
+### Import and export
+
+**Export** in the World inspector downloads the open world as a
+`.synspace.json` file. **Import** opens one, and so does dragging a file onto
+the viewport. Because the asset library lives in the document, an exported world
+travels with the kinds an agent invented for it — a world file is a world *and*
+its kit.
+
+Export is a human affordance, deliberately **not** a tool. An agent already has
+the whole world through `read_scene_graph` and has no use for a download; that
+keeps the line clean — agents read structure, people handle files.
+
+An imported file is untrusted input, so it is validated far more strictly than
+the `localStorage` copy, which this app wrote itself seconds earlier:
+
+| Refused | Because |
+| --- | --- |
+| Wrong format, or not JSON | It is not a world file |
+| A newer format version | A half-loaded world is worse than a clear refusal |
+| A room outside 4–240 m | It would not be placeable |
+| A malformed object | Named precisely, e.g. `objects[3].position must be three finite numbers.` |
+| Duplicate object or zone ids | The store addresses objects by id; a duplicate makes every lookup ambiguous |
+| Over 8 MB | That is not a floor plan |
+
+A refused import leaves the open world untouched, and says why on screen and in
+the activity log.
+
 ---
 
 ## Verification
 
 ```bash
-npm test        # 58 checks across 7 suites
+npm test        # 82 checks across 9 suites
 ```
 
 | Suite | Covers |
@@ -606,6 +657,8 @@ npm test        # 58 checks across 7 suites
 | `proposal` | Staleness detection, approval gating, override |
 | `determinism` | Same world in, same findings out |
 | `persistence` | Save, restore, schema rejection, start-fresh |
+| `worldFile` | Export round trip, and every refusal an untrusted file can earn |
+| `theme` | Palette resolution, and that a viewer preference never overrides world data |
 | `dynamic-world` | Layout-driven room sizing, city generation, occupancy scaling |
 | `custom-assets` | Runtime asset definition, derived footprints, open schemas |
 
@@ -639,7 +692,8 @@ Honest scope. These are absent by choice, not by oversight:
 
 - **Multi-user presence.** One browser, one person. The actor model is built for
   more, but there is no transport.
-- **Server persistence.** `localStorage` only; nothing leaves the browser.
+- **Server persistence.** `localStorage` plus file import/export. There is no
+  backend, so sharing a world means sharing a file.
 - **Native WebMCP.** No browser ships it enabled; the polyfill route is the only
   way to exercise the tools today.
 - **Freeform geometry.** Custom assets compose primitives. There is no mesh

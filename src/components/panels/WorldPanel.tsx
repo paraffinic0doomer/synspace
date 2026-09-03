@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useRef } from 'react'
 import {
   useConstraintViolations,
   useEgressRoutes,
@@ -7,13 +7,14 @@ import {
   useWorldMetadata,
   useZoneSummaries,
 } from '@/state'
-import { LAYOUTS, WORLD_PRESETS, requestFocus } from '@/tools'
+import { LAYOUTS, WORLD_PRESETS, downloadWorld, requestFocus } from '@/tools'
 import { ZONE_KIND_LABELS } from '@/tools/zones'
 import type { ConstraintViolation, EnvironmentSettings } from '@/types'
 import { COORDINATE_SYSTEM, SYSTEM_ACTOR } from '@/types'
 import { roundTo } from '@/utils'
 import { Badge, Disclosure, EmptyState, Icon, SectionLabel, ToggleRow } from '@/components/ui'
 import { WhatIfPanel } from './WhatIfPanel'
+import { useWorldImport } from '@/components/WorldFileTransfer'
 
 /**
  * World tab: the structured view of the space rather than the object list.
@@ -32,6 +33,9 @@ export function WorldPanel() {
   const loadScene = useSceneStore((state) => state.loadScene)
   const generateLayout = useSceneStore((state) => state.generateLayout)
   const objectCount = useSceneStore((state) => state.scene.objects.length)
+  const log = useSceneStore((state) => state.log)
+  const fileInput = useRef<HTMLInputElement>(null)
+  const { importFile, error: importError } = useWorldImport()
   const sceneName = useSceneStore((state) => state.scene.name)
 
   const grouped = useMemo(
@@ -104,6 +108,48 @@ export function WorldPanel() {
             </div>
           )}
         </div>
+
+        {/* A world is a document, so it can leave the browser as one. Export is
+            deliberately UI rather than a tool: an agent already reads the whole
+            world through read_scene_graph and has no use for a download. */}
+        <div className="flex gap-1.5 px-2.5 pt-2">
+          <button
+            type="button"
+            onClick={() => {
+              const name = downloadWorld(useSceneStore.getState().scene)
+              log({ message: `Exported the world as ${name}`, level: 'success' })
+            }}
+            className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-ink-750 bg-ink-850 py-1.5 text-[11px] text-ink-300 transition-colors hover:border-ink-650 hover:text-ink-100"
+          >
+            <Icon name="download" size={12} />
+            Export
+          </button>
+          <button
+            type="button"
+            onClick={() => fileInput.current?.click()}
+            className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-ink-750 bg-ink-850 py-1.5 text-[11px] text-ink-300 transition-colors hover:border-ink-650 hover:text-ink-100"
+          >
+            <Icon name="download" size={12} className="rotate-180" />
+            Import
+          </button>
+          <input
+            ref={fileInput}
+            type="file"
+            accept=".json,application/json"
+            className="hidden"
+            onChange={(event) => {
+              const file = event.target.files?.[0]
+              if (file) void importFile(file)
+              // Reset, so re-picking the same file fires change again.
+              event.target.value = ''
+            }}
+          />
+        </div>
+        {importError && (
+          <p className="px-2.5 pt-1.5 text-[10.5px] leading-relaxed text-danger-500">
+            {importError}
+          </p>
+        )}
 
         {/* Presets: the same engine with different objects, zones and rules. */}
         <SectionLabel>Start from a preset</SectionLabel>

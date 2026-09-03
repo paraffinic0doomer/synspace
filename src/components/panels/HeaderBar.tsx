@@ -8,11 +8,19 @@ import {
   useSceneName,
   useSceneStats,
   useSceneStore,
+  useThemeStore,
   useWorldMetadata,
 } from '@/state'
 import { SHORTCUTS, requestResetView } from '@/tools'
 import type { TransformMode } from '@/types'
+import type { ThemePreference } from '@/state'
 import { Icon, IconButton, SegmentedControl, StatusDot } from '@/components/ui'
+
+const THEME_LABEL: Record<ThemePreference, string> = {
+  system: 'Theme: match system',
+  light: 'Theme: light',
+  dark: 'Theme: dark',
+}
 
 const MODE_OPTIONS: {
   value: TransformMode
@@ -59,6 +67,10 @@ export function HeaderBar({
   const canRedo = useCanRedo()
   const undoLabel = useNextUndoLabel()
   const redoLabel = useNextRedoLabel()
+
+  const themePreference = useThemeStore((state) => state.preference)
+  const resolvedTheme = useThemeStore((state) => state.resolved)
+  const cycleTheme = useThemeStore((state) => state.cycle)
 
   const stats = useSceneStats()
   const revision = useWorldMetadata().revision
@@ -222,6 +234,21 @@ export function HeaderBar({
           className="xl:hidden"
         >
           <Icon name="info" size={14} />
+        </IconButton>
+
+        {/* One control cycling system → light → dark. The icon shows what is
+            actually in force, so "system" still tells you which way it went. */}
+        <IconButton
+          label={THEME_LABEL[themePreference]}
+          tooltip={`${THEME_LABEL[themePreference]} — click to change`}
+          onClick={cycleTheme}
+        >
+          <Icon
+            name={
+              themePreference === 'system' ? 'monitor' : resolvedTheme === 'light' ? 'sun' : 'moon'
+            }
+            size={14}
+          />
         </IconButton>
 
         <div className="relative">

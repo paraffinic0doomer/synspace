@@ -6,6 +6,25 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="color-scheme" content="dark" />
     <title>SynSpace — Spatial Workspace</title>
+    <script>
+      // Stamped before first paint. Without this the dark default renders for
+      // a frame and a light-theme viewer gets a black flash on every load.
+      ;(function () {
+        try {
+          var stored = localStorage.getItem('synspace.theme')
+          var pref = stored === 'light' || stored === 'dark' ? stored : null
+          var resolved =
+            pref ||
+            (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark')
+          var root = document.documentElement
+          root.dataset.theme = resolved
+          root.classList.toggle('dark', resolved === 'dark')
+          document
+            .querySelector('meta[name="color-scheme"]')
+            .setAttribute('content', resolved)
+        } catch (e) {}
+      })()
+    </script>
   </head>
   <body>
     <div id="root"></div>
